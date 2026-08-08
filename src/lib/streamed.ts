@@ -46,8 +46,7 @@ function normalizeMatchesPayload(payload: unknown): StreamedMatch[] {
 
 export async function fetchFootballMatches(): Promise<StreamedMatch[]> {
   const response = await fetch(MATCHES_URL, {
-    next: { revalidate: 30 },
-    cache: 'no-store'
+    next: { revalidate: 30 }
   });
 
   if (!response.ok) {
@@ -85,8 +84,7 @@ export async function fetchMatchStreams(match: StreamedMatch): Promise<StreamedS
 
     try {
       const response = await fetch(url, {
-        next: { revalidate: 30 },
-        cache: 'no-store'
+        next: { revalidate: 30 }
       });
 
       if (!response.ok) {

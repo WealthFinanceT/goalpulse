@@ -2,6 +2,8 @@ import type { StreamedMatch } from '@/lib/streamed';
 import { fetchFootballMatches } from '@/lib/streamed';
 import FilteredMatches from '@/components/FilteredMatches';
 
+export const dynamic = 'force-dynamic';
+
 export default async function HomePage() {
   let matches: StreamedMatch[] = [];
   let errorMessage = '';
