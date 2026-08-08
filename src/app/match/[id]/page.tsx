@@ -47,6 +47,11 @@ function isLiveMatch(timestamp?: number): boolean {
   return diffMinutes >= -5 && diffMinutes <= 90;
 }
 
+function isScheduledMatch(timestamp?: number): boolean {
+  if (!timestamp) return false;
+  return new Date(timestamp).getTime() > Date.now();
+}
+
 export default async function MatchDetailPage({ params }: { params: { id: string } }) {
   const match = await fetchMatchById(params.id);
 
@@ -71,6 +76,7 @@ export default async function MatchDetailPage({ params }: { params: { id: string
   }
 
   const isLive = isLiveMatch(match.date);
+  const isScheduled = isScheduledMatch(match.date);
   const homeLogo = getBadgeUrl(match.teams?.home.badge) ?? undefined;
   const awayLogo = getBadgeUrl(match.teams?.away.badge) ?? undefined;
   const { homeName, awayName } = getDisplayNames(match);
@@ -176,6 +182,12 @@ export default async function MatchDetailPage({ params }: { params: { id: string
               </div>
             ) : (
               <>
+                {isScheduled && !isLive && (
+                  <div className="mb-4 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100">
+                    <p className="font-semibold">The stream hasn’t started yet.</p>
+                    <p className="mt-1 text-amber-200">Come back closer to kick-off for the live stream to begin.</p>
+                  </div>
+                )}
                 {primaryStreamUrl ? (
                   <div className="overflow-hidden rounded-2xl border border-white/10 bg-black">
                     <iframe
