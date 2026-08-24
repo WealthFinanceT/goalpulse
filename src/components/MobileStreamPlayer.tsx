@@ -10,59 +10,93 @@ export default function MobileStreamPlayer({ src, title }: { src: string; title:
   const [orientationNotice, setOrientationNotice] = useState('');
 
   useEffect(() => {
-    const isMobileDevice = window.matchMedia('(pointer: coarse)').matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    setMobile(isMobileDevice);
+    if (typeof window === 'undefined') return;
+
+    const supportsMatchMedia = typeof window.matchMedia === 'function';
+    const isMobileDevice = supportsMatchMedia
+      ? window.matchMedia('(pointer: coarse)').matches
+      : /Android|iPhone|iPad|iPod/i.test(window.navigator?.userAgent || '');
+
+    setMobile(isMobileDevice || /Android|iPhone|iPad|iPod/i.test(window.navigator?.userAgent || ''));
 
     function handleFullscreenChange() {
+      if (typeof document === 'undefined') return;
       const fullscreen = document.fullscreenElement === playerRef.current;
       setIsFullscreen(fullscreen);
+
       if (fullscreen) {
-        lockLandscape();
+        void lockLandscape();
       } else {
         unlockOrientation();
       }
     }
 
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    if (typeof document !== 'undefined') {
+      document.addEventListener('fullscreenchange', handleFullscreenChange);
+    }
+
     return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      }
       unlockOrientation();
     };
   }, []);
 
   async function lockLandscape() {
+    if (typeof window === 'undefined') return;
+
     try {
-      const orientation = screen.orientation as ScreenOrientation & {
+      const orientation = window.screen?.orientation as (ScreenOrientation & {
         lock?: (orientation: 'landscape') => Promise<void>;
-      };
-      if (orientation.lock) {
-        await orientation.lock('landscape');
-        setOrientationNotice('Landscape mode enabled');
-      }
+      }) | undefined;
+
+      if (!orientation || typeof orientation.lock !== 'function') return;
+
+      await orientation.lock('landscape');
+      setOrientationNotice('Landscape mode enabled');
     } catch {
       setOrientationNotice('Fullscreen active. Landscape rotation may depend on device settings.');
     }
   }
 
   function unlockOrientation() {
-    try {
-      screen.orientation?.unlock?.();
-    } catch {
-      // Some iOS browsers expose orientation APIs but reject unlock calls.
+    if (typeof window === 'undefined') {
+      setOrientationNotice('');
+      return;
     }
+
+    try {
+      const orientation = window.screen?.orientation;
+      if (orientation && typeof orientation.unlock === 'function') {
+        void Promise.resolve(orientation.unlock()).catch(() => undefined);
+      }
+    } catch {
+      // Some mobile browsers expose the API but reject unlock calls.
+    }
+
     setOrientationNotice('');
   }
 
   async function toggleFullscreen() {
-    if (!playerRef.current) return;
+    if (typeof document === 'undefined' || !playerRef.current) return;
+
+    const element = playerRef.current as HTMLDivElement & {
+      requestFullscreen?: () => Promise<void>;
+    };
+
+    if (typeof element.requestFullscreen !== 'function') {
+      setOrientationNotice('Fullscreen is unavailable in this browser.');
+      return;
+    }
 
     try {
-      if (document.fullscreenElement) {
+      if (document.fullscreenElement && typeof document.exitFullscreen === 'function') {
         await document.exitFullscreen();
         return;
       }
 
-      await playerRef.current.requestFullscreen();
+      await element.requestFullscreen();
       await lockLandscape();
     } catch {
       setOrientationNotice('Fullscreen is unavailable in this browser.');
@@ -70,11 +104,23 @@ export default function MobileStreamPlayer({ src, title }: { src: string; title:
   }
 
   useEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
     if (!mobile || !playerRef.current || document.fullscreenElement) return;
 
-    playerRef.current.requestFullscreen().then(lockLandscape).catch(() => {
+    const element = playerRef.current as HTMLDivElement & {
+      requestFullscreen?: () => Promise<void>;
+    };
+
+    if (typeof element.requestFullscreen !== 'function') {
       setOrientationNotice('Tap the fullscreen button to start landscape viewing.');
-    });
+      return;
+    }
+
+    element.requestFullscreen()
+      .then(() => lockLandscape())
+      .catch(() => {
+        setOrientationNotice('Tap the fullscreen button to start landscape viewing.');
+      });
   }, [mobile]);
 
   return (
@@ -82,7 +128,7 @@ export default function MobileStreamPlayer({ src, title }: { src: string; title:
       <iframe
         src={src}
         title={title}
-        allow="autoplay; fullscreen; picture-in-picture; orientation-lock"
+        allow="autoplay; fullscreen; picture-in-picture"
         allowFullScreen
         className="h-full w-full border-0"
       />
