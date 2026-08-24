@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import { ArrowLeft, CalendarDays, CircleAlert, ExternalLink, Goal, Play, Radio } from 'lucide-react';
 import { fetchMatchById, fetchMatchStreams } from '@/lib/streamed';
+import MobileStreamPlayer from '@/components/MobileStreamPlayer';
 
 function formatDate(timestamp?: number) {
   if (!timestamp) return 'TBA';
@@ -57,16 +59,16 @@ export default async function MatchDetailPage({ params }: { params: { id: string
 
   if (!match) {
     return (
-      <main className="min-h-screen bg-surface px-4 py-8 sm:px-6 lg:px-10">
+      <main className="stream-page min-h-screen bg-[#0b1118] px-4 py-8 text-white opacity-100 filter-none pointer-events-auto sm:px-6 lg:px-10">
         <div className="mx-auto max-w-2xl">
           <Link 
             href="/" 
             className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-muted hover:text-white transition"
           >
-            ← Back to Matches
+            <ArrowLeft size={16} strokeWidth={1.8} aria-hidden="true" /> Back to Matches
           </Link>
           
-          <div className="rounded-3xl border border-border bg-card p-8 text-center">
+          <div className="rounded-3xl border border-[#2b3945] bg-[#121b24] p-8 text-center">
             <p className="text-lg font-semibold text-white">Match not found</p>
             <p className="mt-2 text-sm text-muted">The match you're looking for doesn't exist or has been removed.</p>
           </div>
@@ -86,18 +88,18 @@ export default async function MatchDetailPage({ params }: { params: { id: string
   const primaryStreamUrl = primaryStream?.embedUrl || null;
 
   return (
-    <main className="min-h-screen bg-surface px-4 py-8 sm:px-6 lg:px-10">
+    <main className="stream-page min-h-screen bg-[#0b1118] px-4 py-8 text-white opacity-100 filter-none pointer-events-auto sm:px-6 lg:px-10">
       <div className="mx-auto max-w-2xl">
         {/* Back Button */}
         <Link 
           href="/" 
           className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-muted hover:text-white transition"
         >
-          ← Back to Matches
+          <ArrowLeft size={16} strokeWidth={1.8} aria-hidden="true" /> Back to Matches
         </Link>
 
         {/* Main Card */}
-        <article className="rounded-3xl border border-border bg-card p-8 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
+        <article className="rounded-3xl border border-[#2b3945] bg-[#121b24] p-8 shadow-[0_18px_45px_rgba(0,0,0,0.36)]">
           {/* Header with League and Status */}
           <div className="mb-8 flex items-center justify-between">
             <span className="text-sm font-medium uppercase tracking-wider text-muted">
@@ -105,7 +107,7 @@ export default async function MatchDetailPage({ params }: { params: { id: string
             </span>
             {isLive && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/20 px-3 py-1 text-xs font-semibold text-red-300 border border-red-500/30">
-                <span className="inline-block h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+                <Radio size={13} strokeWidth={2} aria-hidden="true" />
                 LIVE
               </span>
             )}
@@ -126,7 +128,7 @@ export default async function MatchDetailPage({ params }: { params: { id: string
             {/* VS Separator */}
             <div className="flex flex-col items-center gap-2 shrink-0">
               <span className="text-sm font-bold text-muted uppercase">vs</span>
-              <span className="text-4xl">⚽</span>
+              <Goal size={36} strokeWidth={1.5} className="text-emerald-300" aria-hidden="true" />
             </div>
 
             {/* Away Team */}
@@ -143,7 +145,7 @@ export default async function MatchDetailPage({ params }: { params: { id: string
           {/* Match Details */}
           <div className="space-y-4 border-t border-white/10 pt-6">
             <div className="rounded-lg bg-white/5 p-4 border border-white/10">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted mb-1">Match Date & Time</p>
+              <p className="mb-1 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted"><CalendarDays size={14} strokeWidth={1.8} aria-hidden="true" />Match Date & Time</p>
               <p className="text-base font-semibold text-white">{formatDate(match.date)}</p>
             </div>
 
@@ -157,7 +159,7 @@ export default async function MatchDetailPage({ params }: { params: { id: string
               <p className="text-base font-semibold text-white">
                 {isLive ? (
                   <span className="inline-flex items-center gap-2">
-                    <span className="inline-block h-2 w-2 rounded-full bg-red-500"></span>
+                    <Radio size={14} strokeWidth={2} aria-hidden="true" />
                     Live
                   </span>
                 ) : (
@@ -178,7 +180,7 @@ export default async function MatchDetailPage({ params }: { params: { id: string
 
             {streamSources.length === 0 || streams.length === 0 ? (
               <div className="rounded-lg bg-white/5 p-4 border border-white/10 text-center">
-                <p className="text-sm text-muted">No streams available at this time.</p>
+                <p className="flex items-center justify-center gap-2 text-sm text-muted"><CircleAlert size={16} aria-hidden="true" />No streams available at this time.</p>
               </div>
             ) : (
               <>
@@ -190,13 +192,7 @@ export default async function MatchDetailPage({ params }: { params: { id: string
                 )}
                 {primaryStreamUrl ? (
                   <div className="overflow-hidden rounded-2xl border border-white/10 bg-black">
-                    <iframe
-                      src={primaryStreamUrl}
-                      title={`${homeName} vs ${awayName}`}
-                      allow="autoplay; fullscreen; picture-in-picture"
-                      allowFullScreen
-                      className="h-[320px] w-full sm:h-[420px]"
-                    />
+                    <MobileStreamPlayer src={primaryStreamUrl} title={`${homeName} vs ${awayName}`} />
                   </div>
                 ) : (
                   <div className="rounded-lg bg-white/5 p-4 border border-white/10 text-center">
@@ -226,7 +222,7 @@ export default async function MatchDetailPage({ params }: { params: { id: string
                           rel="noopener noreferrer"
                           className="rounded-full bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition"
                         >
-                          Open stream
+                          <span className="inline-flex items-center gap-1.5">Open stream <ExternalLink size={13} aria-hidden="true" /></span>
                         </a>
                       </div>
                     </div>
