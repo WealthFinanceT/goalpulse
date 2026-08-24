@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Bell, Bookmark, CalendarDays, House, Moon, Play, PlayCircle, Radio, Search, Settings, Sun, Trophy } from 'lucide-react';
+import { AtSign, Bell, Bookmark, CalendarDays, House, MessageCircle, Moon, Play, PlayCircle, Radio, Search, Send, Settings, Sun, Trophy } from 'lucide-react';
 import FilteredMatches from '@/components/FilteredMatches';
 import type { StreamedMatch } from '@/lib/streamed';
 
@@ -14,6 +14,8 @@ export default function DashboardContent({
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [notificationMessage, setNotificationMessage] = useState('');
+  const [notificationPending, setNotificationPending] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -32,6 +34,33 @@ export default function DashboardContent({
     setTheme(nextTheme);
     window.localStorage.setItem('goal-pulse-theme', nextTheme);
   }
+
+  async function enableNotifications() {
+    if (!('Notification' in window)) {
+      setNotificationMessage('Notifications are not supported in this browser.');
+      return;
+    }
+
+    if (Notification.permission === 'granted') {
+      setNotificationMessage('Notifications are already enabled.');
+      return;
+    }
+
+    setNotificationPending(true);
+    try {
+      const permission = await Notification.requestPermission();
+      setNotificationMessage(permission === 'granted' ? 'Notifications enabled.' : 'Notifications remain disabled.');
+    } finally {
+      setNotificationPending(false);
+    }
+  }
+
+  const socialLinks = [
+    { label: 'Instagram', href: 'https://www.instagram.com/goalpulse', icon: AtSign },
+    { label: 'YouTube', href: 'https://www.youtube.com/@goalpulse', icon: Play },
+    { label: 'Telegram', href: 'https://t.me/goalpulse', icon: Send },
+    { label: 'WhatsApp', href: 'https://wa.me/?text=Follow%20Goal%20Pulse', icon: MessageCircle }
+  ];
 
   const navItems = [
     { label: 'Home', href: '/', active: true, icon: House },
@@ -79,13 +108,18 @@ export default function DashboardContent({
             <div className="rounded-[22px] border border-white/8 bg-[#0b1520]/80 p-4">
               <p className="text-[0.66rem] font-semibold uppercase tracking-[0.24em] text-slate-400">Follow us</p>
               <div className="mt-3 flex items-center gap-3">
-                {['x', 'ig', 'yt', 't'].map((item) => (
-                  <div
-                    key={item}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.02] text-[0.68rem] font-semibold text-slate-300"
+                {socialLinks.map(({ label, href, icon: Icon }) => (
+                  <a
+                    key={label}
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`Open Goal Pulse on ${label}`}
+                    title={label}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.02] text-slate-300 transition hover:border-emerald-400/40 hover:bg-emerald-500/10 hover:text-emerald-300"
                   >
-                    {item}
-                  </div>
+                    <Icon size={16} strokeWidth={1.8} aria-hidden="true" />
+                  </a>
                 ))}
               </div>
             </div>
@@ -93,10 +127,16 @@ export default function DashboardContent({
             <div className="rounded-[22px] border border-white/8 bg-[#0b1520]/80 p-4">
               <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-slate-400">Never miss a match</p>
               <p className="mt-2 text-sm leading-6 text-slate-300">Get notified for live matches and important updates.</p>
-              <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/15 px-3 py-2.5 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/20">
+              <button
+                type="button"
+                onClick={enableNotifications}
+                disabled={notificationPending}
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/15 px-3 py-2.5 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/20 disabled:cursor-wait disabled:opacity-60"
+              >
                 <Bell size={16} strokeWidth={1.8} aria-hidden="true" />
-                Enable Notifications
+                {notificationPending ? 'Requesting Permission...' : 'Enable Notifications'}
               </button>
+              {notificationMessage ? <p className="mt-2 text-xs text-slate-400">{notificationMessage}</p> : null}
             </div>
             </div>
           </div>
