@@ -103,26 +103,6 @@ export default function MobileStreamPlayer({ src, title }: { src: string; title:
     }
   }
 
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof document === 'undefined') return;
-    if (!mobile || !playerRef.current || document.fullscreenElement) return;
-
-    const element = playerRef.current as HTMLDivElement & {
-      requestFullscreen?: () => Promise<void>;
-    };
-
-    if (typeof element.requestFullscreen !== 'function') {
-      setOrientationNotice('Tap the fullscreen button to start landscape viewing.');
-      return;
-    }
-
-    element.requestFullscreen()
-      .then(() => lockLandscape())
-      .catch(() => {
-        setOrientationNotice('Tap the fullscreen button to start landscape viewing.');
-      });
-  }, [mobile]);
-
   return (
     <div ref={playerRef} className="group relative aspect-video w-full overflow-hidden bg-black md:aspect-auto md:h-[420px]">
       <iframe
