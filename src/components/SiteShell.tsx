@@ -48,20 +48,20 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
   return (
     <main data-theme={theme} className="site-content min-h-screen bg-[#040910] px-3 py-3 text-white sm:px-4 lg:px-5 xl:px-6">
       <div className="mx-auto max-w-[1600px] lg:flex lg:gap-5">
-        <aside className="mb-5 w-full lg:sticky lg:top-4 lg:h-[calc(100vh-32px)] lg:w-[256px] lg:self-start xl:w-[260px]">
-          <div className="flex flex-col overflow-y-auto rounded-[28px] border border-white/8 bg-[#071018]/90 p-4 shadow-[0_22px_55px_rgba(2,6,23,0.82)] backdrop-blur-xl lg:h-full">
-            <Link href="/" className="flex items-center gap-3 px-2 py-2">
+        <aside className="mb-4 w-full lg:sticky lg:top-4 lg:mb-5 lg:h-[calc(100vh-32px)] lg:w-[256px] lg:self-start xl:w-[260px]">
+          <div className="flex items-center gap-3 overflow-x-auto rounded-[28px] border border-white/8 bg-[#071018]/90 p-2 shadow-[0_22px_55px_rgba(2,6,23,0.82)] backdrop-blur-xl lg:h-full lg:flex-col lg:items-stretch lg:overflow-y-auto lg:overflow-x-hidden lg:p-4">
+            <Link href="/" className="flex shrink-0 items-center gap-3 px-2 py-2">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-400/30 bg-gradient-to-br from-emerald-400 to-green-600 text-lg font-black text-[#05130d] shadow-[0_10px_25px_rgba(16,185,129,0.45)]">G</div>
               <div><p className="text-[0.58rem] font-semibold uppercase tracking-[0.30em] text-emerald-300/80">Goal Pulse</p><h2 className="mt-1 text-lg font-bold tracking-[-0.04em] text-white">Football hub</h2></div>
             </Link>
-            <nav className="mt-6 space-y-2">
+            <nav className="flex shrink-0 items-center gap-2 lg:mt-6 lg:block lg:space-y-2">
               {navItems.map((item) => {
                 const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
                 const Icon = item.icon;
-                return <Link key={item.label} href={item.href} className={`flex items-center justify-between rounded-2xl px-3 py-3.5 text-[0.97rem] font-medium transition-all ${active ? 'border border-emerald-500/30 bg-[#0b2c22] text-emerald-200' : 'text-slate-300 hover:bg-white/4 hover:text-white'}`}><span className="flex items-center gap-3"><Icon size={19} strokeWidth={1.8} aria-hidden="true" />{item.label}</span>{active ? <span className="h-2 w-2 rounded-full bg-emerald-400" /> : null}</Link>;
+                return <Link key={item.label} href={item.href} className={`flex shrink-0 items-center justify-between rounded-2xl px-3 py-3 text-sm font-medium transition-all lg:py-3.5 lg:text-[0.97rem] ${active ? 'border border-emerald-500/30 bg-[#0b2c22] text-emerald-200' : 'text-slate-300 hover:bg-white/4 hover:text-white'}`}><span className="flex items-center gap-2.5 lg:gap-3"><Icon size={18} strokeWidth={1.8} aria-hidden="true" />{item.label}</span>{active ? <span className="ml-2 h-2 w-2 rounded-full bg-emerald-400" /> : null}</Link>;
               })}
             </nav>
-            <div className="mt-5 rounded-[22px] border border-white/8 bg-[#0b1520]/80 p-4 lg:mt-auto">
+            <div className="hidden rounded-[22px] border border-white/8 bg-[#0b1520]/80 p-4 lg:mt-auto lg:block">
               <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-slate-400">Preferences</p>
               <button type="button" onClick={enableNotifications} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/15 px-3 py-2.5 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/20"><Bell size={16} strokeWidth={1.8} aria-hidden="true" />Enable Notifications</button>
               {notificationMessage ? <p className="mt-2 text-xs text-slate-400">{notificationMessage}</p> : null}

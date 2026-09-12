@@ -3,17 +3,10 @@
 import { useState } from 'react';
 import { ArrowRight, TrendingUp } from 'lucide-react';
 import type { StreamedMatch } from '@/lib/streamed';
+import { isMatchLive } from '@/lib/streamed';
 import MatchCard from './MatchCard';
 
 type FilterType = 'all' | 'live' | 'trending';
-
-function isLiveMatch(timestamp?: number): boolean {
-  if (!timestamp) return false;
-  const matchDate = new Date(timestamp);
-  const now = new Date();
-  const diffMinutes = (matchDate.getTime() - now.getTime()) / (1000 * 60);
-  return diffMinutes >= -5 && diffMinutes <= 90;
-}
 
 export default function FilteredMatches({
   matches,
@@ -43,10 +36,7 @@ export default function FilteredMatches({
     return searchableText.includes(normalizedQuery);
   });
 
-  const liveMatches = searchFilteredMatches.filter((match) => isLiveMatch(match.date));
-  const upcomingMatches = searchFilteredMatches.filter(
-    (match) => match.date && new Date(match.date).getTime() > Date.now() && !isLiveMatch(match.date)
-  );
+  const liveMatches = searchFilteredMatches.filter(isMatchLive);
 
   const filteredMatches =
     filter === 'live'

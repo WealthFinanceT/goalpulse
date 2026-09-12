@@ -1,29 +1,17 @@
 import Link from 'next/link';
-import { ArrowLeft, CalendarDays, CircleAlert, ExternalLink, Goal, Play, Radio } from 'lucide-react';
-import { fetchMatchById, fetchMatchStreams } from '@/lib/streamed';
-import MobileStreamPlayer from '@/components/MobileStreamPlayer';
-
-function formatDate(timestamp?: number) {
-  if (!timestamp) return 'TBA';
-  const date = new Date(timestamp);
-  return new Intl.DateTimeFormat('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit'
-  }).format(date);
-}
+import { ArrowLeft, CalendarDays, CircleAlert, Goal, Radio } from 'lucide-react';
+import { getFixtureById } from '@/lib/api-football';
+import { fetchMatchStreams, formatMatchDate, getMatchStatusLabel, isMatchLive, isMatchUpcoming } from '@/lib/streamed';
+import StreamSelector from '@/components/StreamSelector';
 
 function getBadgeUrl(badge?: string): string | null {
   if (badge && badge.trim()) {
-    return `https://streamed.pk/api/images/badge/${badge}.webp`;
+    return badge.startsWith('http') ? badge : `https://streamed.pk/api/images/badge/${badge}.webp`;
   }
   return null;
 }
 
-function getDisplayNames(match: Awaited<ReturnType<typeof fetchMatchById>> extends infer T ? T extends null ? never : T : never) {
+function getDisplayNames(match: NonNullable<Awaited<ReturnType<typeof getFixtureById>>>) {
   const fallbackTitle = match?.title || 'Football Match';
   const parts = fallbackTitle.split(/\s+vs\.?\s+/i);
   const homeName = match?.teams?.home?.name || parts[0]?.trim() || 'Home Team';
@@ -41,26 +29,13 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-function isLiveMatch(timestamp?: number): boolean {
-  if (!timestamp) return false;
-  const matchDate = new Date(timestamp);
-  const now = new Date();
-  const diffMinutes = (matchDate.getTime() - now.getTime()) / (1000 * 60);
-  return diffMinutes >= -5 && diffMinutes <= 90;
-}
-
-function isScheduledMatch(timestamp?: number): boolean {
-  if (!timestamp) return false;
-  return new Date(timestamp).getTime() > Date.now();
-}
-
 export default async function MatchDetailPage({ params }: { params: { id: string } }) {
-  const match = await fetchMatchById(params.id);
+  const match = await getFixtureById(params.id);
 
   if (!match) {
     return (
       <main className="stream-page min-h-screen bg-[#0b1118] px-4 py-8 text-white opacity-100 filter-none pointer-events-auto sm:px-6 lg:px-10">
-        <div className="mx-auto max-w-2xl">
+        <div className="mx-auto w-full max-w-5xl">
           <Link 
             href="/" 
             className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-muted hover:text-white transition"
@@ -77,16 +52,13 @@ export default async function MatchDetailPage({ params }: { params: { id: string
     );
   }
 
-  const isLive = isLiveMatch(match.date);
-  const isScheduled = isScheduledMatch(match.date);
-  const homeLogo = getBadgeUrl(match.teams?.home.badge) ?? undefined;
-  const awayLogo = getBadgeUrl(match.teams?.away.badge) ?? undefined;
+  const isLive = isMatchLive(match);
+  const isScheduled = isMatchUpcoming(match);
+  const homeLogo = getBadgeUrl(match.teams?.home?.badge) ?? undefined;
+  const awayLogo = getBadgeUrl(match.teams?.away?.badge) ?? undefined;
   const { homeName, awayName } = getDisplayNames(match);
   const streamSources = match.sources || [];
   const streams = await fetchMatchStreams(match);
-  const primaryStream = streams[0];
-  const primaryStreamUrl = primaryStream?.embedUrl || null;
-
   return (
     <main className="stream-page min-h-screen bg-[#0b1118] px-4 py-8 text-white opacity-100 filter-none pointer-events-auto sm:px-6 lg:px-10">
       <div className="mx-auto max-w-2xl">
@@ -99,9 +71,9 @@ export default async function MatchDetailPage({ params }: { params: { id: string
         </Link>
 
         {/* Main Card */}
-        <article className="rounded-3xl border border-[#2b3945] bg-[#121b24] p-8 shadow-[0_18px_45px_rgba(0,0,0,0.36)]">
+        <article className="flex flex-col rounded-3xl border border-[#2b3945] bg-[#121b24] p-4 shadow-[0_18px_45px_rgba(0,0,0,0.36)] sm:p-6 lg:p-8">
           {/* Header with League and Status */}
-          <div className="mb-8 flex items-center justify-between">
+          <div className="order-2 mb-6 flex items-center justify-between lg:order-none lg:mb-8">
             <span className="text-sm font-medium uppercase tracking-wider text-muted">
               {match.category || 'Football'}
             </span>
@@ -114,15 +86,15 @@ export default async function MatchDetailPage({ params }: { params: { id: string
           </div>
 
           {/* Team Matchup */}
-          <div className="mb-8 flex items-center justify-between gap-6">
+          <div className="order-3 mb-6 flex items-center justify-between gap-2 sm:gap-6 lg:order-none lg:mb-8">
             {/* Home Team */}
             <div className="flex flex-1 flex-col items-center gap-4">
               <img 
                 src={homeLogo} 
                 alt={homeName}
-                className="h-24 w-24 object-contain rounded"
+                className="h-16 w-16 rounded object-contain sm:h-24 sm:w-24"
               />
-              <h2 className="text-xl font-bold text-white text-center">{homeName}</h2>
+              <h2 className="max-w-[9rem] break-words text-center text-base font-bold text-white sm:text-xl">{homeName}</h2>
             </div>
 
             {/* VS Separator */}
@@ -138,15 +110,23 @@ export default async function MatchDetailPage({ params }: { params: { id: string
                 alt={awayName}
                 className="h-24 w-24 object-contain rounded"
               />
-              <h2 className="text-xl font-bold text-white text-center">{awayName}</h2>
+              <h2 className="max-w-[9rem] break-words text-center text-base font-bold text-white sm:text-xl">{awayName}</h2>
             </div>
           </div>
 
           {/* Match Details */}
-          <div className="space-y-4 border-t border-white/10 pt-6">
+          <div className="order-4 space-y-4 border-t border-white/10 pt-6 lg:order-none">
             <div className="rounded-lg bg-white/5 p-4 border border-white/10">
               <p className="mb-1 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted"><CalendarDays size={14} strokeWidth={1.8} aria-hidden="true" />Match Date & Time</p>
-              <p className="text-base font-semibold text-white">{formatDate(match.date)}</p>
+                <p className="text-base font-semibold text-white">{formatMatchDate(match.kickoffTime)}</p>
+            </div>
+
+            <div className="rounded-lg bg-white/5 p-4 border border-white/10">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted mb-1">Score</p>
+              <p className="text-base font-semibold text-white">
+                {match.score?.home !== undefined && match.score?.away !== undefined ? `${match.score.home} - ${match.score.away}` : 'Not available'}
+                {match.elapsed !== undefined && isLive ? ` · ${match.elapsed}'` : ''}
+              </p>
             </div>
 
             <div className="rounded-lg bg-white/5 p-4 border border-white/10">
@@ -160,17 +140,17 @@ export default async function MatchDetailPage({ params }: { params: { id: string
                 {isLive ? (
                   <span className="inline-flex items-center gap-2">
                     <Radio size={14} strokeWidth={2} aria-hidden="true" />
-                    Live
+                    {getMatchStatusLabel(match)}
                   </span>
                 ) : (
-                  'Scheduled'
+                  getMatchStatusLabel(match)
                 )}
               </p>
             </div>
           </div>
 
           {/* Stream Player Section */}
-          <div className="border-t border-white/10 pt-6 mt-6">
+          <div className="order-first mt-0 border-t border-white/10 pt-0 lg:order-none lg:mt-6 lg:pt-6">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-sm font-bold uppercase tracking-wider text-white">Watch Match</h3>
               {isLive && (
@@ -180,7 +160,8 @@ export default async function MatchDetailPage({ params }: { params: { id: string
 
             {streamSources.length === 0 || streams.length === 0 ? (
               <div className="rounded-lg bg-white/5 p-4 border border-white/10 text-center">
-                <p className="flex items-center justify-center gap-2 text-sm text-muted"><CircleAlert size={16} aria-hidden="true" />No streams available at this time.</p>
+                <p className="flex items-center justify-center gap-2 text-sm font-semibold text-white"><CircleAlert size={16} aria-hidden="true" />Stream unavailable</p>
+                <p className="mt-2 text-sm text-muted">This stream source is currently unavailable. Try another available source.</p>
               </div>
             ) : (
               <>
@@ -190,44 +171,7 @@ export default async function MatchDetailPage({ params }: { params: { id: string
                     <p className="mt-1 text-amber-200">Come back closer to kick-off for the live stream to begin.</p>
                   </div>
                 )}
-                {primaryStreamUrl ? (
-                  <div className="overflow-hidden rounded-2xl border border-white/10 bg-black">
-                    <MobileStreamPlayer src={primaryStreamUrl} title={`${homeName} vs ${awayName}`} />
-                  </div>
-                ) : (
-                  <div className="rounded-lg bg-white/5 p-4 border border-white/10 text-center">
-                    <p className="text-sm text-muted">The stream player is unavailable right now. Please try another source.</p>
-                  </div>
-                )}
-
-                <div className="mt-4 space-y-3">
-                  {streams.map((stream, idx) => (
-                    <div
-                      key={`${stream.source}-${stream.id}-${idx}`}
-                      className="rounded-lg bg-white/5 p-4 border border-white/10 flex items-center justify-between gap-4"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-white capitalize">
-                          {stream.source}
-                        </p>
-                        <p className="text-xs text-muted mt-1">
-                          {stream.language} {stream.hd ? '· HD' : ''}
-                        </p>
-                      </div>
-
-                      <div className="flex shrink-0 gap-2">
-                        <a
-                          href={stream.embedUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="rounded-full bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition"
-                        >
-                          <span className="inline-flex items-center gap-1.5">Open stream <ExternalLink size={13} aria-hidden="true" /></span>
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <StreamSelector streams={streams} title={`${homeName} vs ${awayName}`} />
               </>
             )}
           </div>

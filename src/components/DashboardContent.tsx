@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AtSign, Bell, Bookmark, CalendarDays, House, MessageCircle, Moon, Play, PlayCircle, Radio, Search, Send, Settings, Sun, Trophy } from 'lucide-react';
 import FilteredMatches from '@/components/FilteredMatches';
 import type { StreamedMatch } from '@/lib/streamed';
+import { useMatchPolling } from '@/components/useMatchPolling';
 
 export default function DashboardContent({
   matches,
@@ -12,6 +13,7 @@ export default function DashboardContent({
   matches: StreamedMatch[];
   errorMessage: string;
 }) {
+  const refreshedMatches = useMatchPolling(matches);
   const [searchQuery, setSearchQuery] = useState('');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [notificationMessage, setNotificationMessage] = useState('');
@@ -75,9 +77,9 @@ export default function DashboardContent({
   return (
     <main data-theme={theme} className="min-h-screen bg-[#040910] px-3 py-3 text-white sm:px-4 lg:px-5 xl:px-6">
       <div className="mx-auto max-w-[1600px] lg:flex lg:gap-5">
-        <aside className="mb-5 w-full lg:sticky lg:top-4 lg:h-[calc(100vh-32px)] lg:w-[256px] lg:self-start xl:w-[260px]">
-          <div className="flex flex-col overflow-y-auto rounded-[28px] border border-white/8 bg-[#071018]/90 p-4 shadow-[0_22px_55px_rgba(2,6,23,0.82)] backdrop-blur-xl lg:h-full">
-            <div className="flex items-center gap-3 px-2 py-2">
+        <aside className="mb-4 w-full lg:sticky lg:top-4 lg:mb-5 lg:h-[calc(100vh-32px)] lg:w-[256px] lg:self-start xl:w-[260px]">
+          <div className="flex items-center gap-3 overflow-x-auto rounded-[28px] border border-white/8 bg-[#071018]/90 p-2 shadow-[0_22px_55px_rgba(2,6,23,0.82)] backdrop-blur-xl lg:h-full lg:flex-col lg:items-stretch lg:overflow-y-auto lg:overflow-x-hidden lg:p-4">
+            <div className="flex shrink-0 items-center gap-3 px-2 py-2">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-400/30 bg-gradient-to-br from-emerald-400 to-green-600 text-lg font-black text-[#05130d] shadow-[0_10px_25px_rgba(16,185,129,0.45)]">
                 G
               </div>
@@ -87,24 +89,24 @@ export default function DashboardContent({
               </div>
             </div>
 
-            <nav className="mt-6 space-y-2">
+            <nav className="flex shrink-0 items-center gap-2 lg:mt-6 lg:block lg:space-y-2">
               {navItems.map((item) => (
                 <a
                   key={item.label}
                   href={item.href}
-                  className={`flex items-center justify-between rounded-2xl px-3 py-3.5 text-[0.97rem] font-medium transition-all ${
+                  className={`flex shrink-0 items-center justify-between rounded-2xl px-3 py-3 text-sm font-medium transition-all lg:py-3.5 lg:text-[0.97rem] ${
                     item.active
                       ? 'border border-emerald-500/30 bg-[#0b2c22] text-emerald-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]'
                       : 'text-slate-300 hover:bg-white/4 hover:text-white'
                   }`}
                 >
-                  <span className="flex items-center gap-3"><item.icon size={19} strokeWidth={1.8} aria-hidden="true" />{item.label}</span>
+                  <span className="flex items-center gap-2.5 lg:gap-3"><item.icon size={18} strokeWidth={1.8} aria-hidden="true" />{item.label}</span>
                   {item.label === 'Home' ? <span className="h-2 w-2 rounded-full bg-emerald-400" /> : null}
                 </a>
               ))}
             </nav>
 
-            <div className="mt-auto space-y-5 pt-7">
+            <div className="hidden space-y-5 pt-7 lg:mt-auto lg:block">
             <div className="rounded-[22px] border border-white/8 bg-[#0b1520]/80 p-4">
               <p className="text-[0.66rem] font-semibold uppercase tracking-[0.24em] text-slate-400">Follow us</p>
               <div className="mt-3 flex items-center gap-3">
@@ -192,7 +194,7 @@ export default function DashboardContent({
             <div className="relative z-10 flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
               <div className="max-w-[650px]">
                 <p className="text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-emerald-300">Welcome to Goal Pulse</p>
-                <h1 className="mt-4 max-w-[620px] text-4xl font-black leading-[0.95] tracking-[-0.06em] text-white sm:text-5xl xl:text-[4.1rem]">
+                <h1 className="mt-4 max-w-[620px] text-[2.1rem] font-black leading-[0.95] tracking-[-0.06em] text-white sm:text-5xl xl:text-[4.1rem]">
                   Stream football.
                   <span className="block text-emerald-400">Live.</span>
                   <span className="block text-white">Anytime. Anywhere.</span>
@@ -244,7 +246,7 @@ export default function DashboardContent({
               <p className="mt-2 text-sm text-red-100/80">{errorMessage}</p>
             </div>
           ) : (
-            <FilteredMatches matches={matches} searchQuery={searchQuery} />
+            <FilteredMatches matches={refreshedMatches} searchQuery={searchQuery} />
           )}
 
           <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

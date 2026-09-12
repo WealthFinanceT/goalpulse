@@ -7,14 +7,14 @@ import { ArrowRight, CircleAlert } from 'lucide-react';
 import MatchCard from './MatchCard';
 import SiteShell from './SiteShell';
 import WatchlistToggle from './WatchlistToggle';
+import { formatMatchDate, isMatchLive, isMatchUpcoming } from '@/lib/streamed';
 import type { StreamedMatch } from '@/lib/streamed';
+import { useMatchPolling } from '@/components/useMatchPolling';
 
 type SectionKind = 'live' | 'upcoming' | 'leagues' | 'teams' | 'channels' | 'watchlist' | 'highlights' | 'settings';
 
-function isLive(date?: number) { if (!date) return false; const minutes = (new Date(date).getTime() - Date.now()) / 60000; return minutes >= -5 && minutes <= 90; }
-function isUpcoming(date?: number) { return Boolean(date && new Date(date).getTime() > Date.now() && !isLive(date)); }
 function teamNames(match: StreamedMatch) { return [match.teams?.home?.name, match.teams?.away?.name].filter(Boolean) as string[]; }
-function dateLabel(date?: number) { return date ? new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(date)) : 'Date to be announced'; }
+function dateLabel(date?: number) { return date ? new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(date)) : 'Date to be announced'; }
 
 function EmptyState({ title, message }: { title: string; message: string }) { return <div className="rounded-[28px] border border-white/8 bg-[#071018]/90 p-10 text-center shadow-[0_18px_50px_rgba(0,0,0,0.25)]"><CircleAlert size={24} className="mx-auto mb-3 text-emerald-300" strokeWidth={1.8} aria-hidden="true" /><p className="text-xl font-bold text-white">{title}</p><p className="mt-2 text-sm text-slate-400">{message}</p></div>; }
 
@@ -23,6 +23,7 @@ export default function SectionPage({ kind, matches, errorMessage }: { kind: Sec
   const [selectedLeague, setSelectedLeague] = useState('');
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [reminders, setReminders] = useState<string[]>([]);
+  const refreshedMatches = useMatchPolling(matches);
   const searchParams = useSearchParams();
   const selectedTeam = searchParams.get('team') || '';
 
@@ -32,20 +33,20 @@ export default function SectionPage({ kind, matches, errorMessage }: { kind: Sec
 
   const filtered = useMemo(() => {
     const lower = query.trim().toLowerCase();
-    return matches.filter((match) => {
+    return refreshedMatches.filter((match) => {
       const searchable = [match.title, match.category, ...teamNames(match)].filter(Boolean).join(' ').toLowerCase();
       const matchesQuery = !lower || searchable.includes(lower);
       const matchesLeague = !selectedLeague || (match.category || 'Football') === selectedLeague;
       const matchesTeam = !selectedTeam || teamNames(match).includes(selectedTeam);
-      const matchesKind = kind === 'live' ? isLive(match.date) : kind === 'upcoming' ? isUpcoming(match.date) : kind === 'watchlist' ? watchlist.includes(match.id) : true;
+      const matchesKind = kind === 'live' ? isMatchLive(match) : kind === 'upcoming' ? isMatchUpcoming(match) : kind === 'watchlist' ? watchlist.includes(match.id) : true;
       return matchesQuery && matchesLeague && matchesTeam && matchesKind;
     });
-  }, [kind, matches, query, selectedLeague, selectedTeam, watchlist]);
+  }, [kind, refreshedMatches, query, selectedLeague, selectedTeam, watchlist]);
 
   const title = { live: 'Live matches', upcoming: 'Upcoming fixtures', leagues: 'Football leagues', teams: 'Teams', channels: 'TV channels', watchlist: 'My watchlist', highlights: 'Highlights', settings: 'Settings' }[kind];
-  const categories = [...new Set(matches.map((match) => match.category || 'Football'))].sort();
-  const teams = [...new Set(matches.flatMap(teamNames))].sort();
-  const channels = matches.flatMap((match) => (match.sources || []).map((source) => ({ ...source, match })));
+  const categories = [...new Set(refreshedMatches.map((match) => match.category || 'Football'))].sort();
+  const teams = [...new Set(refreshedMatches.flatMap(teamNames))].sort();
+  const channels = refreshedMatches.flatMap((match) => (match.sources || []).map((source) => ({ ...source, match })));
 
   return <SiteShell><section className="mb-5 rounded-[28px] border border-emerald-400/15 bg-[#071018]/95 p-6 shadow-[0_22px_60px_rgba(2,6,23,0.5)]"><p className="text-[0.65rem] font-semibold uppercase tracking-[0.25em] text-emerald-300">Goal Pulse</p><h1 className="mt-2 text-3xl font-black tracking-[-0.05em] text-white sm:text-4xl">{title}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">{kind === 'live' ? 'Watch matches that are live right now.' : kind === 'upcoming' ? 'Plan your next match day and set reminders.' : kind === 'leagues' ? 'Explore competitions represented in the current fixture feed.' : kind === 'teams' ? 'Find teams and open their available fixtures.' : kind === 'channels' ? 'Open available match sources from the live data feed.' : kind === 'watchlist' ? 'Your saved matches stay available on this device.' : kind === 'highlights' ? 'Highlights appear here when the source provides them.' : 'Manage your Goal Pulse preferences.'}</p></section>
     {errorMessage ? <EmptyState title="Unable to load this page" message={errorMessage} /> : kind === 'settings' ? <SettingsContent watchlist={watchlist} onClear={() => { setWatchlist([]); window.localStorage.removeItem('goal-pulse-watchlist'); }} /> : kind === 'highlights' ? <EmptyState title="No highlights available" message="The current football feed does not provide highlight videos yet." /> : kind === 'leagues' ? <><div className="mb-5 flex flex-wrap gap-3">{categories.map((category) => <button type="button" key={category} onClick={() => setSelectedLeague(selectedLeague === category ? '' : category)} className={`rounded-full border px-4 py-2 text-sm font-semibold ${selectedLeague === category ? 'border-emerald-400 bg-emerald-500 text-[#03160d]' : 'border-white/10 bg-white/5 text-slate-300'}`}>{category}</button>)}</div><MatchGrid matches={filtered} empty="No matches found for this league." /></> : kind === 'teams' ? <><input value={query} onChange={(event) => setQuery(event.target.value)} className="mb-5 w-full rounded-2xl border border-white/10 bg-[#0a1320] px-4 py-3 text-slate-100 outline-none placeholder:text-slate-500" placeholder="Search teams..." aria-label="Search teams" /><div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{teams.filter((team) => team.toLowerCase().includes(query.toLowerCase())).map((team) => <Link key={team} href={`/teams?team=${encodeURIComponent(team)}`} className={`rounded-2xl border p-4 text-lg font-bold text-white transition hover:border-emerald-400/40 ${selectedTeam === team ? 'border-emerald-400 bg-emerald-500/10' : 'border-white/8 bg-[#071018]/90'}`}>{team}<span className="mt-1 block text-xs font-normal text-slate-400">View fixtures</span></Link>)}</div>{selectedTeam ? <MatchGrid matches={filtered} empty={`No fixtures found for ${selectedTeam}.`} /> : null}</> : kind === 'channels' ? <ChannelList channels={channels} /> : <MatchGrid matches={filtered} empty={kind === 'live' ? 'No live matches right now.' : kind === 'watchlist' ? 'Your watchlist is empty.' : 'No upcoming fixtures found.'} onReminder={kind === 'upcoming' ? toggleReminder : undefined} reminders={reminders} onRemove={kind === 'watchlist' ? removeSaved : undefined} />}

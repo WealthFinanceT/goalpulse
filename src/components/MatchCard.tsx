@@ -1,18 +1,7 @@
 import Link from 'next/link';
 import { Bell, CalendarDays, Goal, Play } from 'lucide-react';
 import type { StreamedMatch } from '@/lib/streamed';
-
-function formatDate(timestamp?: number) {
-  if (!timestamp) return 'TBA';
-  const date = new Date(timestamp);
-  return new Intl.DateTimeFormat('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit'
-  }).format(date);
-}
+import { formatMatchDate, getMatchStatusLabel, isMatchLive, isMatchUpcoming } from '@/lib/streamed';
 
 function getTeamNames(match: StreamedMatch): { home: string; away: string } {
   if (match.teams?.home && match.teams?.away) {
@@ -31,7 +20,7 @@ function getTeamNames(match: StreamedMatch): { home: string; away: string } {
 
 function getBadgeUrl(badge?: string): string | null {
   if (badge && badge.trim()) {
-    return `https://streamed.pk/api/images/badge/${badge}.webp`;
+    return badge.startsWith('http') ? badge : `https://streamed.pk/api/images/badge/${badge}.webp`;
   }
   return null;
 }
@@ -45,20 +34,12 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-function isLiveMatch(timestamp?: number): boolean {
-  if (!timestamp) return false;
-  const matchDate = new Date(timestamp);
-  const now = new Date();
-  const diffMinutes = (matchDate.getTime() - now.getTime()) / (1000 * 60);
-  return diffMinutes >= -5 && diffMinutes <= 90;
-}
-
 export default function MatchCard({ match }: { match: StreamedMatch }) {
   const { home, away } = getTeamNames(match);
-  const isLive = isLiveMatch(match.date);
-  const isUpcoming = Boolean(match.date && new Date(match.date).getTime() > Date.now() && !isLive);
-  const homeLogo = getBadgeUrl(match.teams?.home.badge);
-  const awayLogo = getBadgeUrl(match.teams?.away.badge);
+  const isLive = isMatchLive(match);
+  const isUpcoming = isMatchUpcoming(match);
+  const homeLogo = getBadgeUrl(match.teams?.home?.badge);
+  const awayLogo = getBadgeUrl(match.teams?.away?.badge);
 
   return (
     <Link href={`/match/${match.id}`} className="group block h-full focus:outline-none">
@@ -79,7 +60,7 @@ export default function MatchCard({ match }: { match: StreamedMatch }) {
                   : 'border-white/10 bg-white/5 text-slate-300'
             }`}>
               {isLive && <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />}
-              {isLive ? 'LIVE' : isUpcoming ? 'Upcoming' : 'Finished'}
+              {getMatchStatusLabel(match)}
             </div>
           </div>
 
@@ -142,7 +123,8 @@ export default function MatchCard({ match }: { match: StreamedMatch }) {
 
           <div className="mb-4 rounded-[18px] border border-white/8 bg-white/4 p-3.5">
             <p className="flex items-center gap-2 text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-slate-400"><CalendarDays size={13} strokeWidth={1.8} aria-hidden="true" />Match time</p>
-            <p className="mt-2 text-sm font-medium text-slate-200">{formatDate(match.date)}</p>
+            <p className="mt-2 text-sm font-medium text-slate-200">{formatMatchDate(match.kickoffTime)}</p>
+            {match.score?.home !== undefined && match.score?.away !== undefined ? <p className="mt-2 text-base font-bold text-white">{match.score.home} - {match.score.away}{isLive && match.elapsed !== undefined ? ` · ${match.elapsed}'` : ''}</p> : null}
           </div>
 
           <div className="mt-auto flex items-center justify-between gap-3 pt-1">
