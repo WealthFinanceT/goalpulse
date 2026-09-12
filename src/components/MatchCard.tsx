@@ -124,7 +124,6 @@ export default function MatchCard({ match }: { match: StreamedMatch }) {
           <div className="mb-4 rounded-[18px] border border-white/8 bg-white/4 p-3.5">
             <p className="flex items-center gap-2 text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-slate-400"><CalendarDays size={13} strokeWidth={1.8} aria-hidden="true" />Match time</p>
             <p className="mt-2 text-sm font-medium text-slate-200">{formatMatchDate(match.kickoffTime)}</p>
-            {match.score?.home !== undefined && match.score?.away !== undefined ? <p className="mt-2 text-base font-bold text-white">{match.score.home} - {match.score.away}{isLive && match.elapsed !== undefined ? ` · ${match.elapsed}'` : ''}</p> : null}
           </div>
 
           <div className="mt-auto flex items-center justify-between gap-3 pt-1">

@@ -2,36 +2,20 @@ export type MatchStatus = 'scheduled' | 'live' | 'halftime' | 'finished' | 'post
 
 export type StreamedMatch = {
   id: string;
-  footballApiFixtureId?: number;
-  streamProviderFixtureId?: string;
   title: string;
   category?: string;
-  league?: { id?: number; name: string; logo?: string };
-  date?: number;
-  kickoffTime?: number;
+  date?: number; // UTC epoch milliseconds
+  kickoffTime?: number; // UTC epoch milliseconds; retained as the normalized alias
   timezone: 'UTC';
   status: MatchStatus;
   statusShort?: string;
-  statusSource: 'api-football' | 'provider' | 'live-feed' | 'inferred';
+  statusSource: 'provider' | 'live-feed' | 'inferred';
   elapsed?: number;
-  score?: { home?: number; away?: number };
-  halftimeScore?: { home?: number; away?: number };
-  fulltimeScore?: { home?: number; away?: number };
-  events?: MatchEvent[];
   teams?: {
     home?: { name: string; badge: string };
     away?: { name: string; badge: string };
   };
   sources?: Array<{ source: string; id: string }>;
-};
-
-export type MatchEvent = {
-  time?: number;
-  type: 'goal' | 'card' | 'subst' | 'unknown';
-  detail?: string;
-  team?: string;
-  player?: string;
-  assist?: string;
 };
 
 export type StreamedStream = {
@@ -72,7 +56,7 @@ export function formatMatchDate(timestamp?: number): string {
 const MATCHES_URL = 'https://streamed.pk/api/matches/football';
 const LIVE_MATCHES_URL = 'https://streamed.pk/api/matches/live';
 const REQUEST_TIMEOUT_MS = 10_000;
-const FOOTBALL_REVALIDATE_SECONDS = 60;
+const FOOTBALL_REVALIDATE_SECONDS = 30;
 const LIVE_REVALIDATE_SECONDS = 15;
 
 const LIVE_STATUS_VALUES = new Set(['live', '1h', '2h', 'et', 'p', 'pen', 'first_half', 'second_half', 'extra_time', 'penalties']);
@@ -174,8 +158,6 @@ function normalizeRawMatch(value: unknown, liveIds: Set<string>): StreamedMatch 
   const fixture = raw.fixture && typeof raw.fixture === 'object' ? raw.fixture as Record<string, unknown> : undefined;
   const fixtureStatus = fixture?.status && typeof fixture.status === 'object' ? fixture.status as Record<string, unknown> : undefined;
   const rawStatus = normalizeStatus(raw.statusShort ?? nestedStatus?.short ?? nestedStatus?.long ?? raw.status ?? fixtureStatus?.short ?? fixtureStatus?.long);
-  const scoreValue = raw.score ?? raw.goals;
-  const score = scoreValue && typeof scoreValue === 'object' ? scoreValue as Record<string, unknown> : undefined;
   const status = rawStatus || (liveIds.has(raw.id) ? { status: 'live' as const } : { status: kickoffTime && kickoffTime > Date.now() ? 'scheduled' as const : 'finished' as const });
   const statusSource = rawStatus ? 'provider' as const : liveIds.has(raw.id) ? 'live-feed' as const : 'inferred' as const;
 
@@ -191,7 +173,6 @@ function normalizeRawMatch(value: unknown, liveIds: Set<string>): StreamedMatch 
     statusShort: status.statusShort,
     statusSource,
     elapsed: typeof raw.elapsed === 'number' ? raw.elapsed : undefined,
-    score: score ? { home: typeof score.home === 'number' ? score.home : undefined, away: typeof score.away === 'number' ? score.away : undefined } : undefined
   };
 }
 
@@ -260,7 +241,7 @@ export async function fetchMatchById(id: string): Promise<StreamedMatch | null> 
     const [payload, liveIds] = await Promise.all([response.json(), fetchLiveIds()]);
     const match = normalizeMatchesPayload(payload, liveIds).find((item) => item.id === id) || null;
     if (process.env.NODE_ENV !== 'production' && match) {
-      console.debug('[Goal Pulse] fixture', { apiFixtureId: match.id, homeTeam: match.teams?.home?.name, awayTeam: match.teams?.away?.name, apiKickoffUtc: match.kickoffTime ? new Date(match.kickoffTime).toISOString() : undefined, displayTime: match.kickoffTime ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(match.kickoffTime)) : undefined, apiStatus: match.status, elapsed: match.elapsed, currentTime: new Date().toISOString() });
+      console.debug('[Goal Pulse] fixture', { streamProviderFixtureId: match.id, homeTeam: match.teams?.home?.name, awayTeam: match.teams?.away?.name, kickoffUtc: match.kickoffTime ? new Date(match.kickoffTime).toISOString() : undefined, displayTime: match.kickoffTime ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(match.kickoffTime)) : undefined, status: match.status, currentTime: new Date().toISOString() });
     }
     return match;
   } catch (error) {
@@ -298,7 +279,7 @@ export async function fetchMatchStreams(match: StreamedMatch): Promise<StreamedS
 
   const uniqueResults = [...uniqueStreams.values()].sort((a, b) => streamRank(b) - streamRank(a));
   if (process.env.NODE_ENV !== 'production') {
-    console.debug('[Goal Pulse] stream mapping', { apiFixtureId: match.id, streamUrls: uniqueResults.map((stream) => ({ source: stream.source, id: stream.id, embedUrl: stream.embedUrl })) });
+    console.debug('[Goal Pulse] stream mapping', { streamProviderFixtureId: match.id, streamUrls: uniqueResults.map((stream) => ({ source: stream.source, id: stream.id, embedUrl: stream.embedUrl })) });
   }
   return uniqueResults;
 }

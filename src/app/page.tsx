@@ -1,5 +1,5 @@
 import type { StreamedMatch } from '@/lib/streamed';
-import { getFixtures } from '@/lib/api-football';
+import { fetchFootballMatches } from '@/lib/streamed';
 import DashboardContent from '@/components/DashboardContent';
 
 export const dynamic = 'force-dynamic';
@@ -9,7 +9,7 @@ export default async function HomePage() {
   let errorMessage = '';
 
   try {
-    matches = await getFixtures();
+    matches = await fetchFootballMatches();
   } catch (error) {
     errorMessage = error instanceof Error ? error.message : 'Unable to load matches.';
   }

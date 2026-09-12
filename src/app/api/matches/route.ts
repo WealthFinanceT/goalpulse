@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getFixtures } from '@/lib/api-football';
+import { fetchFootballMatches } from '@/lib/streamed';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    return NextResponse.json(await getFixtures(), {
+    return NextResponse.json(await fetchFootballMatches(), {
       headers: { 'Cache-Control': 'no-store, max-age=0' }
     });
   } catch (error) {

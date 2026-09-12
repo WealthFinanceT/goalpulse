@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { ArrowLeft, CalendarDays, CircleAlert, Goal, Radio } from 'lucide-react';
-import { getFixtureById } from '@/lib/api-football';
-import { fetchMatchStreams, formatMatchDate, getMatchStatusLabel, isMatchLive, isMatchUpcoming } from '@/lib/streamed';
+import { fetchMatchById, fetchMatchStreams, formatMatchDate, getMatchStatusLabel, isMatchLive, isMatchUpcoming } from '@/lib/streamed';
 import StreamSelector from '@/components/StreamSelector';
 
 function getBadgeUrl(badge?: string): string | null {
@@ -11,7 +10,7 @@ function getBadgeUrl(badge?: string): string | null {
   return null;
 }
 
-function getDisplayNames(match: NonNullable<Awaited<ReturnType<typeof getFixtureById>>>) {
+function getDisplayNames(match: NonNullable<Awaited<ReturnType<typeof fetchMatchById>>>) {
   const fallbackTitle = match?.title || 'Football Match';
   const parts = fallbackTitle.split(/\s+vs\.?\s+/i);
   const homeName = match?.teams?.home?.name || parts[0]?.trim() || 'Home Team';
@@ -30,7 +29,7 @@ function getInitials(name: string): string {
 }
 
 export default async function MatchDetailPage({ params }: { params: { id: string } }) {
-  const match = await getFixtureById(params.id);
+  const match = await fetchMatchById(params.id);
 
   if (!match) {
     return (
@@ -119,14 +118,6 @@ export default async function MatchDetailPage({ params }: { params: { id: string
             <div className="rounded-lg bg-white/5 p-4 border border-white/10">
               <p className="mb-1 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted"><CalendarDays size={14} strokeWidth={1.8} aria-hidden="true" />Match Date & Time</p>
                 <p className="text-base font-semibold text-white">{formatMatchDate(match.kickoffTime)}</p>
-            </div>
-
-            <div className="rounded-lg bg-white/5 p-4 border border-white/10">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted mb-1">Score</p>
-              <p className="text-base font-semibold text-white">
-                {match.score?.home !== undefined && match.score?.away !== undefined ? `${match.score.home} - ${match.score.away}` : 'Not available'}
-                {match.elapsed !== undefined && isLive ? ` · ${match.elapsed}'` : ''}
-              </p>
             </div>
 
             <div className="rounded-lg bg-white/5 p-4 border border-white/10">
