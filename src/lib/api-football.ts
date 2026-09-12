@@ -88,6 +88,7 @@ function normalizeApiFixture(item: ApiFixture): StreamedMatch {
 
 async function apiFootballRequest<T>(path: string, revalidate: number): Promise<T[]> {
   const apiKey = process.env.FOOTBALL_API_KEY;
+  console.info('[Goal Pulse] FOOTBALL_API_KEY configured:', Boolean(apiKey));
   if (!apiKey) throw new Error('FOOTBALL_API_KEY is not configured on the server.');
 
   const controller = new AbortController();
