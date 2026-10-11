@@ -53,8 +53,24 @@ html, body {
   overflow-x: hidden;
 }
 
+@media (max-width: 1023px) {
+  body > main {
+    padding-top: max(0.75rem, env(safe-area-inset-top));
+    padding-bottom: max(6rem, calc(env(safe-area-inset-bottom) + 6rem));
+  }
+}
+
 button, input {
   font: inherit;
+}
+
+button, a, input, select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid #34d399;
+  outline-offset: 3px;
 }
 
 a {
@@ -68,6 +84,15 @@ img {
 
 ::selection {
   background: rgba(16, 185, 129, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 [data-theme='light'] {

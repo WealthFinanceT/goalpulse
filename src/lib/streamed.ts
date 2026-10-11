@@ -11,12 +11,29 @@ export type StreamedMatch = {
   statusShort?: string;
   statusSource: 'provider' | 'live-feed' | 'inferred';
   elapsed?: number;
+  score?: { home?: number; away?: number };
+  competition?: { id: string; name: string; logo?: string };
   teams?: {
     home?: { name: string; badge: string };
     away?: { name: string; badge: string };
   };
   sources?: Array<{ source: string; id: string }>;
 };
+
+export type StreamedCompetition = { id: string; name: string; logo?: string };
+
+export function getMatchCompetition(match: StreamedMatch): StreamedCompetition {
+  return match.competition || { id: match.category || 'football', name: match.category || 'Football' };
+}
+
+export function normalizeSearchText(value: string): string {
+  return value.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/\s+/g, ' ');
+}
+
+export function getMatchSearchText(match: StreamedMatch): string {
+  const competition = getMatchCompetition(match);
+  return normalizeSearchText([match.title, competition.name, match.teams?.home?.name, match.teams?.away?.name].filter(Boolean).join(' '));
+}
 
 export type StreamedStream = {
   id: string;
@@ -45,7 +62,8 @@ export function getMatchStatusLabel(match: StreamedMatch): string {
   if (match.status === 'cancelled') return 'Cancelled';
   if (match.status === 'abandoned') return 'Abandoned';
   if (match.status === 'suspended') return 'Suspended';
-  return isMatchUpcoming(match) ? 'Upcoming' : 'Finished';
+  if (match.status === 'scheduled') return 'Upcoming';
+  return 'Status unavailable';
 }
 
 export function formatMatchDate(timestamp?: number): string {
@@ -56,8 +74,14 @@ export function formatMatchDate(timestamp?: number): string {
 const MATCHES_URL = 'https://streamed.pk/api/matches/football';
 const LIVE_MATCHES_URL = 'https://streamed.pk/api/matches/live';
 const REQUEST_TIMEOUT_MS = 10_000;
-const FOOTBALL_REVALIDATE_SECONDS = 30;
-const LIVE_REVALIDATE_SECONDS = 15;
+const INITIAL_LIVE_WAIT_MS = 1_500;
+function configuredSeconds(name: string, fallback: number): number {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback;
+}
+
+export const FOOTBALL_REVALIDATE_SECONDS = configuredSeconds('STREAMED_FIXTURES_REVALIDATE_SECONDS', 60);
+export const LIVE_REVALIDATE_SECONDS = configuredSeconds('STREAMED_LIVE_REVALIDATE_SECONDS', 20);
 
 const LIVE_STATUS_VALUES = new Set(['live', '1h', '2h', 'et', 'p', 'pen', 'first_half', 'second_half', 'extra_time', 'penalties']);
 const HALFTIME_STATUS_VALUES = new Set(['ht', 'halftime', 'half_time']);
@@ -157,8 +181,19 @@ function normalizeRawMatch(value: unknown, liveIds: Set<string>): StreamedMatch 
   const nestedStatus = raw.status && typeof raw.status === 'object' ? raw.status as Record<string, unknown> : undefined;
   const fixture = raw.fixture && typeof raw.fixture === 'object' ? raw.fixture as Record<string, unknown> : undefined;
   const fixtureStatus = fixture?.status && typeof fixture.status === 'object' ? fixture.status as Record<string, unknown> : undefined;
+  const rawCompetition = raw.competition && typeof raw.competition === 'object' ? raw.competition as Record<string, unknown> : undefined;
+  const rawLeague = raw.league && typeof raw.league === 'object' ? raw.league as Record<string, unknown> : undefined;
+  const competitionRecord = rawCompetition || rawLeague;
+  const competitionId = competitionRecord?.id ?? competitionRecord?.key ?? raw.competitionId ?? raw.leagueId;
+  const competitionName = competitionRecord?.name ?? competitionRecord?.title ?? raw.competitionName ?? raw.leagueName;
+  const competitionLogo = competitionRecord?.logo ?? competitionRecord?.image;
   const rawStatus = normalizeStatus(raw.statusShort ?? nestedStatus?.short ?? nestedStatus?.long ?? raw.status ?? fixtureStatus?.short ?? fixtureStatus?.long);
-  const status = rawStatus || (liveIds.has(raw.id) ? { status: 'live' as const } : { status: kickoffTime && kickoffTime > Date.now() ? 'scheduled' as const : 'finished' as const });
+  // A passed kickoff is not evidence that a fixture has finished. Only the provider
+  // or the dedicated live feed can promote a match out of its unknown state.
+  const fallbackStatus: { status: MatchStatus; statusShort?: string } = liveIds.has(raw.id)
+    ? { status: 'live' }
+    : { status: kickoffTime && kickoffTime > Date.now() ? 'scheduled' : 'unknown' };
+  const status = rawStatus || fallbackStatus;
   const statusSource = rawStatus ? 'provider' as const : liveIds.has(raw.id) ? 'live-feed' as const : 'inferred' as const;
 
   return {
@@ -166,6 +201,13 @@ function normalizeRawMatch(value: unknown, liveIds: Set<string>): StreamedMatch 
     id: raw.id,
     title: raw.title,
     category: typeof raw.category === 'string' ? raw.category : undefined,
+    competition: typeof competitionId === 'string' || typeof competitionId === 'number'
+      ? {
+          id: String(competitionId),
+          name: typeof competitionName === 'string' ? competitionName : typeof raw.category === 'string' ? raw.category : 'Football',
+          logo: typeof competitionLogo === 'string' ? competitionLogo : undefined
+        }
+      : undefined,
     date: kickoffTime,
     kickoffTime,
     timezone: 'UTC',
@@ -173,6 +215,12 @@ function normalizeRawMatch(value: unknown, liveIds: Set<string>): StreamedMatch 
     statusShort: status.statusShort,
     statusSource,
     elapsed: typeof raw.elapsed === 'number' ? raw.elapsed : undefined,
+    score: raw.score && typeof raw.score === 'object'
+      ? {
+          home: typeof (raw.score as Record<string, unknown>).home === 'number' ? (raw.score as Record<string, number>).home : undefined,
+          away: typeof (raw.score as Record<string, unknown>).away === 'number' ? (raw.score as Record<string, number>).away : undefined
+        }
+      : undefined,
   };
 }
 
@@ -214,13 +262,24 @@ async function fetchLiveIds(): Promise<Set<string>> {
   }
 }
 
+async function fetchInitialLiveIds(): Promise<Set<string>> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(new Set()), INITIAL_LIVE_WAIT_MS);
+    void fetchLiveIds().then((ids) => {
+      clearTimeout(timer);
+      resolve(ids);
+    });
+  });
+}
+
 export async function fetchFootballMatches(): Promise<StreamedMatch[]> {
-  const [response, liveIds] = await Promise.all([
-    fetchWithTimeout(MATCHES_URL, { next: { revalidate: FOOTBALL_REVALIDATE_SECONDS } }),
-    fetchLiveIds()
-  ]);
+  const liveIdsRequest = fetchInitialLiveIds();
+  const response = await fetchWithTimeout(MATCHES_URL, { next: { revalidate: FOOTBALL_REVALIDATE_SECONDS } });
   if (!response.ok) throw new Error(`Failed to fetch matches: ${response.status}`);
   const payload = await response.json();
+  // Live badges are valuable but must not hold the whole fixture page hostage when
+  // Streamed's live endpoint is slow. The client refreshes that small feed later.
+  const liveIds = await liveIdsRequest;
   const matches = normalizeMatchesPayload(payload, liveIds);
 
   if (process.env.NODE_ENV !== 'production') {
@@ -230,12 +289,26 @@ export async function fetchFootballMatches(): Promise<StreamedMatch[]> {
 }
 
 export async function fetchLiveMatches(): Promise<StreamedMatch[]> {
-  return (await fetchFootballMatches()).filter((match) => match.status === 'live');
+  const response = await fetchWithTimeout(LIVE_MATCHES_URL, { next: { revalidate: LIVE_REVALIDATE_SECONDS } });
+  if (!response.ok) throw new Error(`Failed to fetch live matches: ${response.status}`);
+  const payload = await response.json();
+  const liveMatches = normalizeMatchesPayload(payload);
+  const liveIds = new Set(liveMatches.map((match) => match.id));
+  return normalizeMatchesPayload(payload, liveIds).filter((match) => match.category === 'football');
+}
+
+export type FixturePage = { matches: StreamedMatch[]; total: number; offset: number; limit: number };
+
+export async function fetchFootballMatchesPage(offset = 0, limit = 9): Promise<FixturePage> {
+  const matches = await fetchFootballMatches();
+  const safeOffset = Math.max(0, Math.floor(offset));
+  const safeLimit = Math.min(30, Math.max(1, Math.floor(limit)));
+  return { matches: matches.slice(safeOffset, safeOffset + safeLimit), total: matches.length, offset: safeOffset, limit: safeLimit };
 }
 
 export async function fetchMatchById(id: string): Promise<StreamedMatch | null> {
   try {
-    const response = await fetchWithTimeout(MATCHES_URL, { cache: 'no-store' });
+    const response = await fetchWithTimeout(MATCHES_URL, { next: { revalidate: FOOTBALL_REVALIDATE_SECONDS } });
     if (!response.ok) return null;
 
     const [payload, liveIds] = await Promise.all([response.json(), fetchLiveIds()]);

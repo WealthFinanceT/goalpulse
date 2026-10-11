@@ -1,24 +1,28 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { AtSign, Bell, Bookmark, CalendarDays, House, MessageCircle, Moon, Play, PlayCircle, Radio, Search, Send, Settings, Sun, Trophy } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { AtSign, Bell, Bookmark, CalendarDays, House, MessageCircle, Moon, Play, PlayCircle, Radio, Send, Settings, Sun, Trophy } from 'lucide-react';
 import FilteredMatches from '@/components/FilteredMatches';
 import type { StreamedMatch } from '@/lib/streamed';
 import { useMatchPolling } from '@/components/useMatchPolling';
+import MobileBottomNav from '@/components/MobileBottomNav';
+import FixtureSearch from '@/components/FixtureSearch';
 
 export default function DashboardContent({
-  matches,
+  initialMatches,
+  totalMatches,
   errorMessage
 }: {
-  matches: StreamedMatch[];
+  initialMatches: StreamedMatch[];
+  totalMatches: number;
   errorMessage: string;
 }) {
+  const [matches, setMatches] = useState(initialMatches);
+  const [loadingMore, setLoadingMore] = useState(false);
   const refreshedMatches = useMatchPolling(matches);
-  const [searchQuery, setSearchQuery] = useState('');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [notificationMessage, setNotificationMessage] = useState('');
   const [notificationPending, setNotificationPending] = useState(false);
-  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -30,6 +34,22 @@ export default function DashboardContent({
       setTheme(savedTheme);
     }
   }, []);
+
+  useEffect(() => { setMatches(initialMatches); }, [initialMatches]);
+
+  async function loadMoreFixtures() {
+    if (loadingMore || matches.length >= totalMatches) return;
+    setLoadingMore(true);
+    try {
+      const response = await fetch(`/api/matches?offset=${matches.length}&limit=9`);
+      if (!response.ok) return;
+      const page = await response.json() as { matches: StreamedMatch[] };
+      setMatches((current) => {
+        const ids = new Set(current.map((match) => match.id));
+        return [...current, ...page.matches.filter((match) => !ids.has(match.id))];
+      });
+    } finally { setLoadingMore(false); }
+  }
 
   function toggleTheme() {
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
@@ -75,9 +95,9 @@ export default function DashboardContent({
   ];
 
   return (
-    <main data-theme={theme} className="min-h-screen bg-[#040910] px-3 py-3 text-white sm:px-4 lg:px-5 xl:px-6">
+    <main data-theme={theme} className="min-h-screen bg-[#040910] px-3 py-3 pb-24 text-white sm:px-4 lg:px-5 lg:pb-5 xl:px-6">
       <div className="mx-auto max-w-[1600px] lg:flex lg:gap-5">
-        <aside className="mb-4 w-full lg:sticky lg:top-4 lg:mb-5 lg:h-[calc(100vh-32px)] lg:w-[256px] lg:self-start xl:w-[260px]">
+        <aside className="mb-4 hidden w-full lg:sticky lg:top-4 lg:mb-5 lg:block lg:h-[calc(100vh-32px)] lg:w-[256px] lg:self-start xl:w-[260px]">
           <div className="flex items-center gap-3 overflow-x-auto rounded-[28px] border border-white/8 bg-[#071018]/90 p-2 shadow-[0_22px_55px_rgba(2,6,23,0.82)] backdrop-blur-xl lg:h-full lg:flex-col lg:items-stretch lg:overflow-y-auto lg:overflow-x-hidden lg:p-4">
             <div className="flex shrink-0 items-center gap-3 px-2 py-2">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-400/30 bg-gradient-to-br from-emerald-400 to-green-600 text-lg font-black text-[#05130d] shadow-[0_10px_25px_rgba(16,185,129,0.45)]">
@@ -145,28 +165,8 @@ export default function DashboardContent({
         </aside>
 
         <div id="overview" className="min-w-0 flex-1">
-          <header className="mb-5 flex flex-col gap-3 rounded-[26px] border border-white/8 bg-[#071018]/85 px-4 py-3 shadow-[0_12px_30px_rgba(2,6,23,0.45)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between lg:px-5">
-            <label className="relative block w-full max-w-[720px]">
-              <span className="sr-only">Search</span>
-              <Search size={18} strokeWidth={1.8} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-              <input
-                ref={searchInputRef}
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                onKeyDown={(event) => {
-                  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
-                    event.preventDefault();
-                    searchInputRef.current?.focus();
-                  }
-                }}
-                aria-label="Search matches"
-                className="w-full rounded-full border border-white/10 bg-[#0a1320] py-3 pl-10 pr-20 text-[0.95rem] text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400/40"
-                placeholder="Search for matches, teams or leagues..."
-              />
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-slate-300">
-                Ctrl K
-              </span>
-            </label>
+          <header className="relative z-[60] mb-5 flex overflow-visible flex-col gap-3 rounded-[26px] border border-white/8 bg-[#071018]/85 px-4 py-3 shadow-[0_12px_30px_rgba(2,6,23,0.45)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between lg:px-5">
+            <FixtureSearch matches={refreshedMatches} />
 
             <div className="flex items-center justify-end gap-3">
               <button
@@ -246,7 +246,7 @@ export default function DashboardContent({
               <p className="mt-2 text-sm text-red-100/80">{errorMessage}</p>
             </div>
           ) : (
-            <FilteredMatches matches={refreshedMatches} searchQuery={searchQuery} />
+            <FilteredMatches matches={refreshedMatches} totalMatches={totalMatches} onLoadMore={loadMoreFixtures} loadingMore={loadingMore} />
           )}
 
           <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -273,6 +273,7 @@ export default function DashboardContent({
           </section>
         </div>
       </div>
+      <MobileBottomNav />
     </main>
   );
 }

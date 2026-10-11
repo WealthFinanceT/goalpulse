@@ -12,15 +12,18 @@ export default function StreamSelector({ streams, title }: { streams: StreamedSt
   const selectedStream = streams[selectedIndex] || streams[0];
 
   const handlePlaybackError = useCallback((_message: string) => {
-    setFailedIndexes((current) => current.includes(selectedIndex) ? current : [...current, selectedIndex]);
-    const nextIndex = [...streams.keys()].find((index) => index !== selectedIndex && !failedIndexes.includes(index) && index > selectedIndex)
-      ?? [...streams.keys()].find((index) => index !== selectedIndex && !failedIndexes.includes(index));
-    if (nextIndex !== undefined) {
-      setSelectedIndex(nextIndex);
-      return;
-    }
-    setAllSourcesFailed(true);
-  }, [failedIndexes, selectedIndex, streams]);
+    setFailedIndexes((current) => {
+      const failed = current.includes(selectedIndex) ? current : [...current, selectedIndex];
+      const nextIndex = [...streams.keys()].find((index) => !failed.includes(index) && index > selectedIndex)
+        ?? [...streams.keys()].find((index) => !failed.includes(index));
+      if (nextIndex !== undefined) {
+        setSelectedIndex(nextIndex);
+      } else {
+        setAllSourcesFailed(true);
+      }
+      return failed;
+    });
+  }, [selectedIndex, streams]);
 
   if (!selectedStream) {
     return (
@@ -33,6 +36,7 @@ export default function StreamSelector({ streams, title }: { streams: StreamedSt
 
   function selectStream(index: number) {
     setAllSourcesFailed(false);
+    setFailedIndexes((current) => current.filter((failedIndex) => failedIndex !== index));
     setSelectedIndex(index);
   }
 

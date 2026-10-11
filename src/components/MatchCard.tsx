@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Bell, CalendarDays, Goal, Play } from 'lucide-react';
 import type { StreamedMatch } from '@/lib/streamed';
-import { formatMatchDate, getMatchStatusLabel, isMatchLive, isMatchUpcoming } from '@/lib/streamed';
+import { formatMatchDate, getMatchCompetition, getMatchStatusLabel, isMatchLive, isMatchUpcoming } from '@/lib/streamed';
 
 function getTeamNames(match: StreamedMatch): { home: string; away: string } {
   if (match.teams?.home && match.teams?.away) {
@@ -40,6 +40,7 @@ export default function MatchCard({ match }: { match: StreamedMatch }) {
   const isUpcoming = isMatchUpcoming(match);
   const homeLogo = getBadgeUrl(match.teams?.home?.badge);
   const awayLogo = getBadgeUrl(match.teams?.away?.badge);
+  const competition = getMatchCompetition(match);
 
   return (
     <Link href={`/match/${match.id}`} className="group block h-full focus:outline-none">
@@ -49,7 +50,7 @@ export default function MatchCard({ match }: { match: StreamedMatch }) {
         <div className="relative flex h-full flex-col">
           <div className="mb-4 flex items-center justify-between gap-3">
             <span className="rounded-full border border-white/10 bg-white/4 px-2.5 py-1 text-[0.56rem] font-semibold uppercase tracking-[0.2em] text-slate-300">
-              {match.category || 'Football'}
+              {competition.name}
             </span>
 
             <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[0.56rem] font-semibold uppercase tracking-[0.16em] ${
@@ -91,7 +92,7 @@ export default function MatchCard({ match }: { match: StreamedMatch }) {
             </div>
 
             <div className="flex shrink-0 flex-col items-center gap-2 pt-1">
-              <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[0.58rem] font-bold uppercase tracking-[0.18em] text-slate-300">vs</span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[0.58rem] font-bold uppercase tracking-[0.18em] text-slate-300">{typeof match.score?.home === 'number' && typeof match.score?.away === 'number' ? `${match.score.home}–${match.score.away}` : 'vs'}</span>
               <Goal size={24} strokeWidth={1.6} className="text-emerald-300" aria-hidden="true" />
             </div>
 
