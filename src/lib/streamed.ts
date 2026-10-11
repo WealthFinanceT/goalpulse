@@ -252,9 +252,12 @@ async function fetchMatches(url: string, init?: RequestInit & { next?: { revalid
   return normalizeMatchesPayload(data);
 }
 
-async function fetchLiveIds(): Promise<Set<string>> {
+async function fetchLiveIds(fresh = false): Promise<Set<string>> {
   try {
-    const liveMatches = await fetchMatches(LIVE_MATCHES_URL, { next: { revalidate: LIVE_REVALIDATE_SECONDS } });
+    const liveMatches = await fetchMatches(
+      LIVE_MATCHES_URL,
+      fresh ? { cache: 'no-store' } : { next: { revalidate: LIVE_REVALIDATE_SECONDS } }
+    );
     return new Set(liveMatches.map((match) => match.id));
   } catch (error) {
     console.warn('Unable to refresh live fixture IDs:', error);
@@ -262,19 +265,22 @@ async function fetchLiveIds(): Promise<Set<string>> {
   }
 }
 
-async function fetchInitialLiveIds(): Promise<Set<string>> {
+async function fetchInitialLiveIds(fresh = false): Promise<Set<string>> {
   return new Promise((resolve) => {
     const timer = setTimeout(() => resolve(new Set()), INITIAL_LIVE_WAIT_MS);
-    void fetchLiveIds().then((ids) => {
+    void fetchLiveIds(fresh).then((ids) => {
       clearTimeout(timer);
       resolve(ids);
     });
   });
 }
 
-export async function fetchFootballMatches(): Promise<StreamedMatch[]> {
-  const liveIdsRequest = fetchInitialLiveIds();
-  const response = await fetchWithTimeout(MATCHES_URL, { next: { revalidate: FOOTBALL_REVALIDATE_SECONDS } });
+export async function fetchFootballMatches(options: { fresh?: boolean } = {}): Promise<StreamedMatch[]> {
+  const liveIdsRequest = fetchInitialLiveIds(options.fresh);
+  const response = await fetchWithTimeout(
+    MATCHES_URL,
+    options.fresh ? { cache: 'no-store' } : { next: { revalidate: FOOTBALL_REVALIDATE_SECONDS } }
+  );
   if (!response.ok) throw new Error(`Failed to fetch matches: ${response.status}`);
   const payload = await response.json();
   // Live badges are valuable but must not hold the whole fixture page hostage when

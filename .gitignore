@@ -3,7 +3,9 @@
 out/
 .env
 .env.local
+.env.*
 .vercel/
+*.tsbuildinfo
 
 node_modules/
 node_modules/

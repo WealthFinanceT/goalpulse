@@ -19,7 +19,6 @@ const navItems = [
 export default function SiteShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const [notificationMessage, setNotificationMessage] = useState('');
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem('goal-pulse-theme');
@@ -34,15 +33,6 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(nextTheme);
     window.localStorage.setItem('goal-pulse-theme', nextTheme);
-  }
-
-  async function enableNotifications() {
-    if (!('Notification' in window)) {
-      setNotificationMessage('Notifications are not supported in this browser.');
-      return;
-    }
-    const permission = await Notification.requestPermission();
-    setNotificationMessage(permission === 'granted' ? 'Notifications enabled.' : 'Notifications remain disabled.');
   }
 
   return (
@@ -63,8 +53,7 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
             </nav>
             <div className="hidden rounded-[22px] border border-white/8 bg-[#0b1520]/80 p-4 lg:mt-auto lg:block">
               <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-slate-400">Preferences</p>
-              <button type="button" onClick={enableNotifications} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/15 px-3 py-2.5 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/20"><Bell size={16} strokeWidth={1.8} aria-hidden="true" />Enable Notifications</button>
-              {notificationMessage ? <p className="mt-2 text-xs text-slate-400">{notificationMessage}</p> : null}
+              <Link href="/settings#notifications" className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/15 px-3 py-2.5 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/20"><Bell size={16} strokeWidth={1.8} aria-hidden="true" />Notification Settings</Link>
             </div>
           </div>
         </aside>

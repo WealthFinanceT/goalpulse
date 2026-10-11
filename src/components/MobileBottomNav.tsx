@@ -15,7 +15,7 @@ const items = [
 export default function MobileBottomNav() {
   const pathname = usePathname();
   return (
-    <nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#071018]/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-12px_35px_rgba(2,6,23,0.5)] backdrop-blur-xl lg:hidden">
+    <nav aria-label="Mobile navigation" className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#071018]/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-12px_35px_rgba(2,6,23,0.5)] backdrop-blur-xl lg:hidden">
       <div className="mx-auto flex max-w-lg items-center justify-around">
         {items.map(({ label, href, icon: Icon }) => {
           const active = href === '/' ? pathname === '/' : pathname.startsWith(href);

@@ -28,8 +28,9 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-export default async function MatchDetailPage({ params }: { params: { id: string } }) {
-  const match = await fetchMatchById(params.id);
+export default async function MatchDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const match = await fetchMatchById(id);
 
   if (!match) {
     return (
