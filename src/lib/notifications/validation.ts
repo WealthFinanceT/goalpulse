@@ -6,6 +6,7 @@ import {
   type NotificationPreferences,
   type StoredSubscription
 } from './types';
+import { NOTIFICATION_COMPETITIONS, PRIORITY_CLUBS } from './catalog';
 
 const MAX_SUBSCRIPTION_BYTES = 4096;
 const ALLOWED_PUSH_HOSTS = [
@@ -36,18 +37,44 @@ export function normalizePushEndpoint(value: unknown): string | null {
 export function parseNotificationPreferences(value: unknown): NotificationPreferences | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const preferences = value as Record<string, unknown>;
+  const optionalBoolean = (key: string, fallback: boolean) =>
+    preferences[key] === undefined ? fallback : typeof preferences[key] === 'boolean' ? preferences[key] as boolean : null;
+  const masterEnabled = optionalBoolean('masterEnabled', true);
+  const redCards = optionalBoolean('redCards', false);
+  const halfTime = optionalBoolean('halfTime', false);
+  const majorMatches = optionalBoolean('majorMatches', true);
+  const followedClubs = preferences.followedClubs === undefined
+    ? DEFAULT_NOTIFICATION_PREFERENCES.followedClubs
+    : preferences.followedClubs;
+  const followedCompetitions = preferences.followedCompetitions === undefined ? [] : preferences.followedCompetitions;
   if (
+    masterEnabled === null ||
+    redCards === null ||
+    halfTime === null ||
+    majorMatches === null ||
     typeof preferences.goals !== 'boolean' ||
     typeof preferences.kickoffs !== 'boolean' ||
     typeof preferences.fullTime !== 'boolean' ||
-    !KICKOFF_REMINDER_OPTIONS.includes(preferences.kickoffReminderMinutes as 5 | 10 | 15 | 30 | 60)
+    !KICKOFF_REMINDER_OPTIONS.includes(preferences.kickoffReminderMinutes as 5 | 10 | 15 | 30 | 60) ||
+    !Array.isArray(followedClubs) ||
+    followedClubs.length > PRIORITY_CLUBS.length ||
+    !followedClubs.every((id) => typeof id === 'string' && PRIORITY_CLUBS.some((club) => club.id === id)) ||
+    !Array.isArray(followedCompetitions) ||
+    followedCompetitions.length > NOTIFICATION_COMPETITIONS.length ||
+    !followedCompetitions.every((id) => typeof id === 'string' && NOTIFICATION_COMPETITIONS.some((competition) => competition.id === id))
   ) return null;
 
   return {
+    masterEnabled,
     goals: preferences.goals,
     kickoffs: preferences.kickoffs,
+    redCards,
+    halfTime,
     fullTime: preferences.fullTime,
-    kickoffReminderMinutes: preferences.kickoffReminderMinutes as NotificationPreferences['kickoffReminderMinutes']
+    majorMatches,
+    kickoffReminderMinutes: preferences.kickoffReminderMinutes as NotificationPreferences['kickoffReminderMinutes'],
+    followedClubs: [...new Set(followedClubs as string[])],
+    followedCompetitions: [...new Set(followedCompetitions as string[])]
   };
 }
 

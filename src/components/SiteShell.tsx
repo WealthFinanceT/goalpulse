@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Bookmark, Bell, CalendarDays, House, Moon, PlayCircle, Radio, Search, Settings, Sun, Trophy } from 'lucide-react';
+import { Bookmark, Bell, CalendarDays, House, Moon, PlayCircle, Radio, Settings, Sun, Trophy } from 'lucide-react';
 import MobileBottomNav from './MobileBottomNav';
+import FixtureSearch from './FixtureSearch';
+import type { StreamedMatch } from '@/lib/streamed';
 
 const navItems = [
   { label: 'Home', href: '/', icon: House },
@@ -16,7 +19,9 @@ const navItems = [
   { label: 'Settings', href: '/settings', icon: Settings }
 ];
 
-export default function SiteShell({ children }: { children: React.ReactNode }) {
+const EMPTY_MATCHES: StreamedMatch[] = [];
+
+export default function SiteShell({ children, searchMatches = EMPTY_MATCHES }: { children: React.ReactNode; searchMatches?: StreamedMatch[] }) {
   const pathname = usePathname();
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
@@ -36,31 +41,34 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <main data-theme={theme} className="site-content min-h-screen bg-[#040910] px-3 py-3 pb-24 text-white sm:px-4 lg:px-5 lg:pb-5 xl:px-6">
-      <div className="mx-auto max-w-[1600px] lg:flex lg:gap-5">
-        <aside className="mb-4 hidden w-full lg:sticky lg:top-4 lg:mb-5 lg:block lg:h-[calc(100vh-32px)] lg:w-[256px] lg:self-start xl:w-[260px]">
-          <div className="flex items-center gap-3 overflow-x-auto rounded-[28px] border border-white/8 bg-[#071018]/90 p-2 shadow-[0_22px_55px_rgba(2,6,23,0.82)] backdrop-blur-xl lg:h-full lg:flex-col lg:items-stretch lg:overflow-y-auto lg:overflow-x-hidden lg:p-4">
+    <main data-theme={theme} className="site-content bg-[#040910] text-white">
+      <div className="lg:flex lg:gap-5">
+        <aside className="mb-4 hidden w-full lg:sticky lg:top-5 lg:mb-0 lg:block lg:h-[calc(100dvh-40px)] lg:w-60 lg:shrink-0 lg:self-start">
+          <div className="flex h-full items-center gap-3 overflow-x-auto rounded-2xl border border-white/8 bg-[#071018]/90 p-2 shadow-[0_16px_42px_rgba(2,6,23,0.35)] backdrop-blur-xl lg:flex-col lg:items-stretch lg:overflow-y-auto lg:overflow-x-hidden lg:rounded-2xl lg:p-4">
             <Link href="/" className="flex shrink-0 items-center gap-3 px-2 py-2">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-400/30 bg-gradient-to-br from-emerald-400 to-green-600 text-lg font-black text-[#05130d] shadow-[0_10px_25px_rgba(16,185,129,0.45)]">G</div>
-              <div><p className="text-[0.58rem] font-semibold uppercase tracking-[0.30em] text-emerald-300/80">Goal Pulse</p><h2 className="mt-1 text-lg font-bold tracking-[-0.04em] text-white">Football hub</h2></div>
+              <Image src="/icon-192.png" alt="Goal Pulse" width={42} height={42} priority className="h-10 w-10 shrink-0 rounded-xl object-cover" />
+              <div><p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-emerald-300/80">Goal Pulse</p><h2 className="mt-1 text-base font-bold tracking-[-0.03em] text-white">Football hub</h2></div>
             </Link>
-            <nav className="flex shrink-0 items-center gap-2 lg:mt-6 lg:block lg:space-y-2">
+            <nav aria-label="Main navigation" className="flex shrink-0 items-center gap-1.5 lg:mt-6 lg:block lg:space-y-1">
               {navItems.map((item) => {
                 const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
                 const Icon = item.icon;
-                return <Link key={item.label} href={item.href} className={`flex shrink-0 items-center justify-between rounded-2xl px-3 py-3 text-sm font-medium transition-all lg:py-3.5 lg:text-[0.97rem] ${active ? 'border border-emerald-500/30 bg-[#0b2c22] text-emerald-200' : 'text-slate-300 hover:bg-white/4 hover:text-white'}`}><span className="flex items-center gap-2.5 lg:gap-3"><Icon size={18} strokeWidth={1.8} aria-hidden="true" />{item.label}</span>{active ? <span className="ml-2 h-2 w-2 rounded-full bg-emerald-400" /> : null}</Link>;
+                return <Link key={item.label} href={item.href} aria-current={active ? 'page' : undefined} className={`flex shrink-0 items-center justify-between gap-2 rounded-xl px-3 py-3 text-sm font-medium transition-colors lg:min-h-11 lg:py-2.5 ${active ? 'border border-emerald-500/20 bg-[#0b2c22] text-emerald-200' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}><span className="flex items-center gap-2.5 lg:gap-3"><Icon size={18} strokeWidth={1.8} aria-hidden="true" />{item.label}</span>{active ? <span className="ml-2 h-1.5 w-1.5 rounded-full bg-emerald-400" /> : null}</Link>;
               })}
             </nav>
-            <div className="hidden rounded-[22px] border border-white/8 bg-[#0b1520]/80 p-4 lg:mt-auto lg:block">
+            <div className="hidden rounded-xl border border-white/8 bg-[#0b1520]/80 p-4 lg:mt-auto lg:block">
               <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-slate-400">Preferences</p>
-              <Link href="/settings#notifications" className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/15 px-3 py-2.5 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/20"><Bell size={16} strokeWidth={1.8} aria-hidden="true" />Notification Settings</Link>
+              <Link href="/settings#notifications" className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/15"><Bell size={16} strokeWidth={1.8} aria-hidden="true" />Notification Settings</Link>
             </div>
           </div>
         </aside>
         <div className="min-w-0 flex-1">
-          <header className="mb-5 flex items-center justify-between gap-3 rounded-[26px] border border-white/8 bg-[#071018]/85 px-4 py-3 shadow-[0_12px_30px_rgba(2,6,23,0.45)] backdrop-blur-xl lg:px-5">
-            <Link href="/" aria-label="Open fixture search on the home page" className="relative block w-full max-w-[620px] rounded-full border border-white/10 bg-[#0a1320] py-3 pl-10 pr-4 text-[0.95rem] text-slate-400 hover:border-emerald-400/40"><Search size={18} strokeWidth={1.8} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />Search fixtures from the home page</Link>
-            <button type="button" onClick={toggleTheme} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg text-slate-200 transition hover:border-emerald-400/40 hover:text-emerald-300">{theme === 'dark' ? <Sun size={19} strokeWidth={1.8} aria-hidden="true" /> : <Moon size={19} strokeWidth={1.8} aria-hidden="true" />}</button>
+          <header className="relative z-[60] mb-4 flex min-w-0 items-center gap-2 rounded-xl border border-white/8 bg-[#071018]/90 px-3 py-2.5 shadow-[0_10px_26px_rgba(2,6,23,0.28)] backdrop-blur-xl sm:gap-3 sm:px-4 lg:mb-5 lg:rounded-2xl lg:px-5">
+            <Link href="/" aria-label="Goal Pulse home" className="shrink-0 lg:hidden">
+              <Image src="/icon-192.png" alt="" aria-hidden="true" width={36} height={36} priority className="h-9 w-9 rounded-lg object-cover" />
+            </Link>
+            <FixtureSearch matches={searchMatches} />
+            <button type="button" onClick={toggleTheme} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-200 transition hover:border-emerald-400/40 hover:text-emerald-300">{theme === 'dark' ? <Sun size={19} strokeWidth={1.8} aria-hidden="true" /> : <Moon size={19} strokeWidth={1.8} aria-hidden="true" />}</button>
           </header>
           {children}
         </div>

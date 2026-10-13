@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import type { StreamedMatch } from '@/lib/streamed';
 import type { MatchSnapshot, NotificationEvent, NotificationPreferences } from './types';
 import { KICKOFF_REMINDER_OPTIONS } from './types';
+import { matchPriorityClubIds, matchSelectedCompetitionIds } from './catalog';
 
 const MAX_SCORE = 100;
 const MAX_KICKOFF_DAYS_AHEAD = 120;
@@ -37,6 +38,26 @@ function formatScore(match: StreamedMatch, home: number, away: number): string {
   return `${homeName} ${home}–${away} ${awayName}`;
 }
 
+export function isEventEnabledForPreferences(
+  preferences: NotificationPreferences,
+  event: NotificationEvent
+): boolean {
+  if (!preferences.masterEnabled) return false;
+  const kindEnabled = event.kind === 'goal'
+    ? preferences.goals
+    : event.kind === 'full-time'
+      ? preferences.fullTime
+      : event.kind === 'half-time'
+        ? preferences.halfTime
+        : event.kind === 'red-card'
+          ? preferences.redCards
+          : preferences.kickoffs && preferences.kickoffReminderMinutes === event.reminderMinutes;
+  if (!kindEnabled) return false;
+  if (!event.clubIds && !event.competitionIds) return true;
+  return (preferences.majorMatches && (event.clubIds || []).some((id) => preferences.followedClubs.includes(id))) ||
+    (event.competitionIds || []).some((id) => preferences.followedCompetitions.includes(id));
+}
+
 function createEvent(
   kind: NotificationEvent['kind'],
   match: StreamedMatch,
@@ -48,6 +69,8 @@ function createEvent(
     ? `${match.score?.home}-${match.score?.away}`
     : kind === 'kickoff'
       ? `${extra.kickoffTime}-${extra.reminderMinutes}`
+      : kind === 'half-time'
+        ? 'provider-half-time'
       : `${match.score?.home}-${match.score?.away}`;
 
   return {
@@ -57,6 +80,9 @@ function createEvent(
     matchTitle: safeMatchTitle(match),
     body: body.slice(0, 200),
     url: `/match/${encodeURIComponent(match.id)}`,
+    image: match.teams?.home?.badge || undefined,
+    clubIds: matchPriorityClubIds(match),
+    competitionIds: matchSelectedCompetitionIds(match),
     createdAt: now,
     ...extra
   };
@@ -72,7 +98,7 @@ export function detectMatchEvents(
   const maxKickoffTime = now + MAX_KICKOFF_DAYS_AHEAD * 24 * 60 * 60_000;
   const reminderWindows = new Set(
     preferences
-      .filter((preference) => preference.kickoffs)
+      .filter((preference) => preference.masterEnabled && preference.kickoffs)
       .map((preference) => preference.kickoffReminderMinutes)
       .filter((minutes) => KICKOFF_REMINDER_OPTIONS.includes(minutes))
   );
@@ -87,6 +113,15 @@ export function detectMatchEvents(
       previous.observedAt <= now &&
       now - previous.observedAt <= MAX_SNAPSHOT_AGE_MS;
     const score = validScore(match.score) ? match.score : undefined;
+    if (
+      previousIsFresh &&
+      previousMatch &&
+      previousMatch.status !== 'halftime' &&
+      match.status === 'halftime' &&
+      match.statusSource === 'provider'
+    ) {
+      events.push(createEvent('half-time', match, `Half-time: ${safeMatchTitle(match)}${score ? ` (${score.home}–${score.away})` : ''}.`, now));
+    }
 
     if (
       score &&

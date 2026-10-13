@@ -98,6 +98,37 @@ classification. Late-discovered reminders report the actual remaining time.
 Background data checks require at least one valid fixture from the provider; an
 empty/error response does not replace stored snapshots.
 
+## Supported alerts and match scope
+
+Each anonymous device subscription has a master switch and independent goal,
+kickoff, half-time, and full-time preferences. Existing Redis preference
+records are normalized with backward-compatible defaults. By default, the
+editable priority list includes the requested clubs from the Premier League,
+La Liga, Serie A, Bundesliga, and Ligue 1. Users may select specific clubs and
+follow any of the listed domestic leagues or UEFA club competitions. An alert
+is delivered only when a selected priority club participates or the provider
+identifies a competition the device follows. A fixture with two priority clubs
+still creates one event per kind and score transition.
+
+The current Streamed.pk adapter can identify a goal only as a non-regressing
+score increase between fresh observations, and can identify half-time and
+full-time only from explicit provider status changes. It has no sampled event
+timeline or red-card records. Consequently, an upward score correction cannot
+be distinguished from a goal in this feed; goal alerts are score-transition
+alerts, not provider event-ID-confirmed goal records. Red-card settings are
+therefore shown as unavailable and no red-card notification is generated. The sampled payload
+also did not expose stable provider team or competition IDs; matching currently
+uses normalized provider team names and explicit competition name/category
+aliases when present. This is a limitation, not a claim of provider-ID-grade
+identity. Reliable event timelines and stable IDs require support in the
+existing provider response; this project does not fabricate them.
+
+Goal, kickoff, half-time, and full-time alerts honor the master toggle, alert
+type, and selected fixture scope. Competition follows can include matches
+outside the priority-club set when the provider supplies a matching competition
+identity. The provider's current payload may omit that identity for some
+fixtures, in which case those fixtures cannot be included reliably.
+
 ## Local testing
 
 1. Create an Upstash Redis database and generate a VAPID pair as described

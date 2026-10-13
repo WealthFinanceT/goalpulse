@@ -3,7 +3,7 @@ import webpush, { type PushSubscription } from 'web-push';
 import type { StreamedMatch } from '@/lib/streamed';
 import { fetchFootballMatches } from '@/lib/streamed';
 import { getVapidConfiguration } from './config';
-import { detectMatchEvents, enqueueDetectedEvents, isKickoffEventStillValid } from './events';
+import { detectMatchEvents, enqueueDetectedEvents, isEventEnabledForPreferences, isKickoffEventStillValid } from './events';
 import {
   acquireJobLock,
   deleteSubscription,
@@ -32,6 +32,7 @@ import type {
   StoredSubscription
 } from './types';
 import { KICKOFF_REMINDER_OPTIONS } from './types';
+import { DEFAULT_NOTIFICATION_PREFERENCES } from './types';
 import { preferenceIndex } from './storage';
 
 const LOCK_DURATION_SECONDS = 120;
@@ -62,18 +63,18 @@ async function forEachConcurrent<T>(
   await Promise.all(workers);
 }
 
-function eventPreferencesEnabled(
-  preferences: NotificationPreferences,
-  event: NotificationEvent
-): boolean {
-  if (event.kind === 'goal') return preferences.goals;
-  if (event.kind === 'full-time') return preferences.fullTime;
-  return preferences.kickoffs &&
-    preferences.kickoffReminderMinutes === event.reminderMinutes;
-}
-
 function pushTopic(eventId: string): string {
   return eventId.slice(0, 32);
+}
+
+function safeNotificationImage(value: string | undefined): string | undefined {
+  if (!value || value.length > 500) return undefined;
+  try {
+    const image = new URL(value);
+    return image.protocol === 'https:' ? image.href : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function isExpiredPushError(error: unknown): boolean {
@@ -97,6 +98,7 @@ async function sendPush(
     body: event.body,
     url: event.url,
     icon: '/icon-192.png',
+    image: safeNotificationImage(event.image),
     tag: event.id
   });
   if (Buffer.byteLength(payload, 'utf8') > PUSH_PAYLOAD_MAX_BYTES) {
@@ -128,8 +130,11 @@ async function sendPush(
 
 function initialPreferences(reminderMinutes: number[]): NotificationPreferences[] {
   return reminderMinutes.map((kickoffReminderMinutes) => ({
+    ...DEFAULT_NOTIFICATION_PREFERENCES,
     goals: false,
     kickoffs: true,
+    masterEnabled: true,
+    majorMatches: true,
     fullTime: false,
     kickoffReminderMinutes: kickoffReminderMinutes as NotificationPreferences['kickoffReminderMinutes']
   }));
@@ -147,7 +152,7 @@ async function retryFailedDeliveries(state: PendingNotificationEvent, now: numbe
 
   let failedThisPage = false;
   await forEachConcurrent(records, SUBSCRIPTION_CONCURRENCY, async (record) => {
-    if (!eventPreferencesEnabled(record.preferences, state.event)) {
+    if (!isEventEnabledForPreferences(record.preferences, state.event)) {
       await markDelivered(state.event.id, record.id);
       return;
     }
@@ -202,16 +207,21 @@ async function deliverEvent(
 
   const index = preferenceIndex(
     {
-      goals: state.event.kind === 'goal',
-      fullTime: state.event.kind === 'full-time',
-      kickoffs: state.event.kind === 'kickoff',
-      kickoffReminderMinutes: state.event.reminderMinutes || 15
+    ...DEFAULT_NOTIFICATION_PREFERENCES,
+    goals: state.event.kind === 'goal',
+    fullTime: state.event.kind === 'full-time',
+    halfTime: state.event.kind === 'half-time',
+    redCards: state.event.kind === 'red-card',
+    kickoffs: state.event.kind === 'kickoff',
+    masterEnabled: true,
+    majorMatches: true,
+    kickoffReminderMinutes: state.event.reminderMinutes || 15
     },
     state.event.kind
   );
   const page = await getAudiencePage(index, state.cursor, id, PAGE_SIZE);
   await forEachConcurrent(page.subscriptions, SUBSCRIPTION_CONCURRENCY, async (record) => {
-    if (!eventPreferencesEnabled(record.preferences, state.event)) {
+    if (!isEventEnabledForPreferences(record.preferences, state.event)) {
       await markDelivered(id, record.id);
       return;
     }
@@ -274,7 +284,8 @@ export async function runNotificationMonitor(now = Date.now()): Promise<{
         kickoffTime: match.kickoffTime,
         timezone: match.timezone,
         score: match.score,
-        teams: match.teams
+        teams: match.teams,
+        competition: match.competition
       },
       observedAt: now
     }));

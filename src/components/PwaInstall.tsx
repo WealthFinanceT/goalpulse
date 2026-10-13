@@ -2,6 +2,7 @@
 
 import { Download, Share2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 
 type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }> };
 const DISMISS_KEY = 'goal-pulse-install-dismissed';
@@ -83,7 +84,7 @@ export default function PwaInstall() {
   return (
     <div
       aria-live="polite"
-      className="fixed inset-x-3 bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+4.5rem))] z-[90] mx-auto max-w-sm rounded-2xl border border-emerald-400/25 bg-[#071018]/95 p-3 shadow-[0_18px_45px_rgba(2,6,23,0.65)] backdrop-blur-xl lg:bottom-5"
+      className="safe-area-floating-panel fixed z-[90] mx-auto max-w-sm rounded-2xl border border-emerald-400/25 bg-[#071018]/95 p-3 shadow-[0_18px_45px_rgba(2,6,23,0.65)] backdrop-blur-xl"
     >
       {showIosHelp ? (
         <div className="pr-6 text-sm leading-5 text-slate-200">
@@ -95,12 +96,10 @@ export default function PwaInstall() {
         </div>
       ) : (
         <button type="button" onClick={install} className="flex w-full items-center gap-3 text-left">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-[#04150d]">
-            <Download size={19} aria-hidden="true" />
-          </span>
+          <Image src="/icon-192.png" alt="" aria-hidden="true" width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg object-cover" />
           <span>
             <span className="block text-sm font-semibold text-white">Install Goal Pulse</span>
-            <span className="block text-xs text-slate-400">Open fixtures like an app.</span>
+            <span className="flex items-center gap-1 text-xs text-slate-400"><Download size={12} aria-hidden="true" /> Add Goal Pulse to your phone.</span>
           </span>
         </button>
       )}

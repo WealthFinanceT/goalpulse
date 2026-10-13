@@ -1,31 +1,37 @@
 import Link from 'next/link';
 import { ArrowLeft, CalendarDays, CircleAlert, Goal, Radio } from 'lucide-react';
 import { fetchMatchById, fetchMatchStreams, formatMatchDate, getMatchStatusLabel, isMatchLive, isMatchUpcoming } from '@/lib/streamed';
+import SiteShell from '@/components/SiteShell';
 import StreamSelector from '@/components/StreamSelector';
 
 function getBadgeUrl(badge?: string): string | null {
-  if (badge && badge.trim()) {
-    return badge.startsWith('http') ? badge : `https://streamed.pk/api/images/badge/${badge}.webp`;
-  }
-  return null;
+  if (!badge?.trim()) return null;
+  return badge.startsWith('http') ? badge : `https://streamed.pk/api/images/badge/${badge}.webp`;
 }
 
 function getDisplayNames(match: NonNullable<Awaited<ReturnType<typeof fetchMatchById>>>) {
-  const fallbackTitle = match?.title || 'Football Match';
-  const parts = fallbackTitle.split(/\s+vs\.?\s+/i);
-  const homeName = match?.teams?.home?.name || parts[0]?.trim() || 'Home Team';
-  const awayName = match?.teams?.away?.name || parts[1]?.trim() || 'Away Team';
-
-  return { homeName, awayName };
+  const parts = match.title.split(/\s+vs\.?\s+/i);
+  return {
+    homeName: match.teams?.home?.name || parts[0]?.trim() || 'Home Team',
+    awayName: match.teams?.away?.name || parts[1]?.trim() || 'Away Team'
+  };
 }
 
 function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map(word => word[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+  return name.split(' ').map((word) => word[0]).join('').toUpperCase().slice(0, 2);
+}
+
+function TeamIdentity({ name, badge }: { name: string; badge: string | null }) {
+  return (
+    <div className="flex min-w-0 flex-1 flex-col items-center gap-3 text-center sm:gap-4">
+      {badge ? (
+        <img src={badge} alt="" aria-hidden="true" className="h-14 w-14 rounded-full border border-white/10 bg-white/[0.03] object-contain p-1.5 sm:h-20 sm:w-20" />
+      ) : (
+        <span aria-hidden="true" className="flex h-14 w-14 items-center justify-center rounded-full border border-emerald-400/20 bg-emerald-500/10 text-sm font-bold text-emerald-200 sm:h-20 sm:w-20 sm:text-base">{getInitials(name)}</span>
+      )}
+      <h2 title={name} className="w-full break-words text-sm font-semibold leading-5 text-white sm:text-lg sm:leading-6">{name}</h2>
+    </div>
+  );
 }
 
 export default async function MatchDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -34,141 +40,102 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
 
   if (!match) {
     return (
-      <main className="stream-page min-h-screen bg-[#0b1118] px-4 py-8 text-white opacity-100 filter-none pointer-events-auto sm:px-6 lg:px-10">
-        <div className="mx-auto w-full max-w-5xl">
-          <Link 
-            href="/" 
-            className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-muted hover:text-white transition"
-          >
-            <ArrowLeft size={16} strokeWidth={1.8} aria-hidden="true" /> Back to Matches
+      <SiteShell>
+        <div className="mx-auto w-full max-w-4xl">
+          <Link href="/" className="mb-4 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-slate-400 transition hover:text-white">
+            <ArrowLeft size={16} strokeWidth={1.8} aria-hidden="true" /> Back to matches
           </Link>
-          
-          <div className="rounded-3xl border border-[#2b3945] bg-[#121b24] p-8 text-center">
+          <div className="rounded-xl border border-white/8 bg-[#071018]/90 p-6 text-center sm:rounded-2xl sm:p-8">
             <p className="text-lg font-semibold text-white">Match not found</p>
-            <p className="mt-2 text-sm text-muted">The match you're looking for doesn't exist or has been removed.</p>
+            <p className="mt-2 text-sm text-slate-400">The match you’re looking for doesn’t exist or has been removed.</p>
           </div>
         </div>
-      </main>
+      </SiteShell>
     );
   }
 
   const isLive = isMatchLive(match);
   const isScheduled = isMatchUpcoming(match);
-  const homeLogo = getBadgeUrl(match.teams?.home?.badge) ?? undefined;
-  const awayLogo = getBadgeUrl(match.teams?.away?.badge) ?? undefined;
+  const homeBadge = getBadgeUrl(match.teams?.home?.badge);
+  const awayBadge = getBadgeUrl(match.teams?.away?.badge);
   const { homeName, awayName } = getDisplayNames(match);
+  const score = typeof match.score?.home === 'number' && typeof match.score?.away === 'number'
+    ? `${match.score.home}–${match.score.away}`
+    : null;
   const streamSources = match.sources || [];
   const streams = await fetchMatchStreams(match);
+
   return (
-    <main className="stream-page min-h-screen bg-[#0b1118] px-4 py-8 text-white opacity-100 filter-none pointer-events-auto sm:px-6 lg:px-10">
-      <div className="mx-auto max-w-2xl">
-        {/* Back Button */}
-        <Link 
-          href="/" 
-          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-muted hover:text-white transition"
-        >
-          <ArrowLeft size={16} strokeWidth={1.8} aria-hidden="true" /> Back to Matches
+    <SiteShell>
+      <div className="mx-auto w-full max-w-5xl">
+        <Link href="/" className="mb-4 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-slate-400 transition hover:text-white">
+          <ArrowLeft size={16} strokeWidth={1.8} aria-hidden="true" /> Back to matches
         </Link>
 
-        {/* Main Card */}
-        <article className="flex flex-col rounded-3xl border border-[#2b3945] bg-[#121b24] p-4 shadow-[0_18px_45px_rgba(0,0,0,0.36)] sm:p-6 lg:p-8">
-          {/* Header with League and Status */}
-          <div className="order-2 mb-6 flex items-center justify-between lg:order-none lg:mb-8">
-            <span className="text-sm font-medium uppercase tracking-wider text-muted">
-              {match.category || 'Football'}
-            </span>
-            {isLive && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/20 px-3 py-1 text-xs font-semibold text-red-300 border border-red-500/30">
-                <Radio size={13} strokeWidth={2} aria-hidden="true" />
-                LIVE
+        <article className="overflow-hidden rounded-xl border border-white/8 bg-[#071018]/95 shadow-[0_18px_48px_rgba(0,0,0,0.28)] sm:rounded-2xl">
+          <header className="border-b border-white/8 px-4 py-4 sm:px-6 sm:py-5">
+            <div className="flex min-w-0 items-center justify-between gap-3">
+              <p title={match.category || 'Football'} className="min-w-0 truncate text-xs font-semibold uppercase tracking-[0.13em] text-slate-400 sm:text-sm">{match.category || 'Football'}</p>
+              <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-[0.12em] ${
+                isLive ? 'border-red-500/30 bg-red-500/10 text-red-200' : 'border-white/10 bg-white/[0.03] text-slate-300'
+              }`}>
+                {isLive ? <Radio size={13} strokeWidth={2} aria-hidden="true" /> : null}
+                {getMatchStatusLabel(match)}
               </span>
-            )}
-          </div>
-
-          {/* Team Matchup */}
-          <div className="order-3 mb-6 flex items-center justify-between gap-2 sm:gap-6 lg:order-none lg:mb-8">
-            {/* Home Team */}
-            <div className="flex flex-1 flex-col items-center gap-4">
-              <img 
-                src={homeLogo} 
-                alt={homeName}
-                className="h-16 w-16 rounded object-contain sm:h-24 sm:w-24"
-              />
-              <h2 className="max-w-[9rem] break-words text-center text-base font-bold text-white sm:text-xl">{homeName}</h2>
             </div>
+          </header>
 
-            {/* VS Separator */}
-            <div className="flex flex-col items-center gap-2 shrink-0">
-              <span className="text-sm font-bold text-muted uppercase">vs</span>
-              <Goal size={36} strokeWidth={1.5} className="text-emerald-300" aria-hidden="true" />
-            </div>
-
-            {/* Away Team */}
-            <div className="flex flex-1 flex-col items-center gap-4">
-              <img 
-                src={awayLogo} 
-                alt={awayName}
-                className="h-24 w-24 object-contain rounded"
-              />
-              <h2 className="max-w-[9rem] break-words text-center text-base font-bold text-white sm:text-xl">{awayName}</h2>
-            </div>
-          </div>
-
-          {/* Match Details */}
-          <div className="order-4 space-y-4 border-t border-white/10 pt-6 lg:order-none">
-            <div className="rounded-lg bg-white/5 p-4 border border-white/10">
-              <p className="mb-1 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted"><CalendarDays size={14} strokeWidth={1.8} aria-hidden="true" />Match Date & Time</p>
-                <p className="text-base font-semibold text-white">{formatMatchDate(match.kickoffTime)}</p>
-            </div>
-
-            <div className="rounded-lg bg-white/5 p-4 border border-white/10">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted mb-1">League</p>
-              <p className="text-base font-semibold text-white">{match.category || 'Football'}</p>
-            </div>
-
-            <div className="rounded-lg bg-white/5 p-4 border border-white/10">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted mb-1">Status</p>
-              <p className="text-base font-semibold text-white">
-                {isLive ? (
-                  <span className="inline-flex items-center gap-2">
-                    <Radio size={14} strokeWidth={2} aria-hidden="true" />
-                    {getMatchStatusLabel(match)}
-                  </span>
-                ) : (
-                  getMatchStatusLabel(match)
-                )}
-              </p>
-            </div>
-          </div>
-
-          {/* Stream Player Section */}
-          <div className="order-first mt-0 border-t border-white/10 pt-0 lg:order-none lg:mt-6 lg:pt-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-white">Watch Match</h3>
-              {isLive && (
-                <span className="text-xs font-semibold uppercase tracking-wider text-red-300">Live stream</span>
-              )}
-            </div>
-
-            {streamSources.length === 0 || streams.length === 0 ? (
-              <div className="rounded-lg bg-white/5 p-4 border border-white/10 text-center">
-                <p className="flex items-center justify-center gap-2 text-sm font-semibold text-white"><CircleAlert size={16} aria-hidden="true" />Stream unavailable</p>
-                <p className="mt-2 text-sm text-muted">This stream source is currently unavailable. Try another available source.</p>
+          <div className="px-4 py-5 sm:px-6 sm:py-7">
+            <div className="flex min-w-0 items-center justify-between gap-2 sm:gap-6">
+              <TeamIdentity name={homeName} badge={homeBadge} />
+              <div className="flex shrink-0 flex-col items-center gap-1.5 px-1 sm:gap-2">
+                <span className={`whitespace-nowrap text-lg font-bold tabular-nums sm:text-2xl ${isLive ? 'text-white' : 'text-slate-400'}`}>{score || 'VS'}</span>
+                {score ? <Goal size={20} strokeWidth={1.6} className="text-emerald-300" aria-hidden="true" /> : <span className="text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Kick-off</span>}
               </div>
-            ) : (
-              <>
-                {isScheduled && !isLive && (
-                  <div className="mb-4 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100">
-                    <p className="font-semibold">The stream hasn’t started yet.</p>
-                    <p className="mt-1 text-amber-200">Come back closer to kick-off for the live stream to begin.</p>
-                  </div>
-                )}
-                <StreamSelector streams={streams} title={`${homeName} vs ${awayName}`} />
-              </>
-            )}
+              <TeamIdentity name={awayName} badge={awayBadge} />
+            </div>
+
+            <div className="mt-6 grid gap-2 sm:grid-cols-3 sm:gap-3">
+              <div className="min-w-0 rounded-lg border border-white/8 bg-white/[0.025] p-3.5 sm:p-4">
+                <p className="flex items-center gap-2 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-slate-400"><CalendarDays size={14} aria-hidden="true" /> Date & time</p>
+                <p className="mt-2 break-words text-sm font-medium leading-5 text-white">{formatMatchDate(match.kickoffTime)}</p>
+              </div>
+              <div className="min-w-0 rounded-lg border border-white/8 bg-white/[0.025] p-3.5 sm:p-4">
+                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-slate-400">Competition</p>
+                <p title={match.category || 'Football'} className="mt-2 break-words text-sm font-medium leading-5 text-white">{match.category || 'Football'}</p>
+              </div>
+              <div className="min-w-0 rounded-lg border border-white/8 bg-white/[0.025] p-3.5 sm:p-4">
+                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-slate-400">Match status</p>
+                <p className="mt-2 break-words text-sm font-medium leading-5 text-white">{getMatchStatusLabel(match)}</p>
+              </div>
+            </div>
+
+            <section className="mt-6 border-t border-white/8 pt-5 sm:mt-7 sm:pt-6">
+              <div className="mb-4 flex min-w-0 items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold text-white sm:text-base">Watch match</h3>
+                {isLive ? <span className="shrink-0 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-red-300">Live stream</span> : null}
+              </div>
+
+              {streamSources.length === 0 || streams.length === 0 ? (
+                <div className="rounded-lg border border-white/8 bg-white/[0.025] p-4 text-center">
+                  <p className="flex items-center justify-center gap-2 text-sm font-semibold text-white"><CircleAlert size={16} aria-hidden="true" />Stream unavailable</p>
+                  <p className="mt-2 text-sm text-slate-400">This stream source is currently unavailable. Try another available source.</p>
+                </div>
+              ) : (
+                <>
+                  {isScheduled && !isLive ? (
+                    <div className="mb-4 rounded-lg border border-amber-400/20 bg-amber-400/[0.08] p-3.5 text-sm text-amber-100 sm:p-4">
+                      <p className="font-semibold">The stream hasn’t started yet.</p>
+                      <p className="mt-1 text-amber-200/80">Come back closer to kick-off for the live stream to begin.</p>
+                    </div>
+                  ) : null}
+                  <StreamSelector streams={streams} title={`${homeName} vs ${awayName}`} />
+                </>
+              )}
+            </section>
           </div>
         </article>
       </div>
-    </main>
+    </SiteShell>
   );
 }

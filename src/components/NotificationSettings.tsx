@@ -7,6 +7,7 @@ import {
   KICKOFF_REMINDER_OPTIONS,
   type NotificationPreferences
 } from '@/lib/notifications/types';
+import { NOTIFICATION_COMPETITIONS, PRIORITY_CLUBS } from '@/lib/notifications/catalog';
 import {
   notificationPermissionMessage,
   type NotificationPermissionState
@@ -231,6 +232,15 @@ export default function NotificationSettings() {
 
   const available = permission !== 'unsupported' && !iosInstallRequired;
   const canDisable = enabled || Boolean(subscription && permission === 'denied');
+  const permissionLabel = iosInstallRequired
+    ? 'Install required'
+    : permission === 'unsupported'
+      ? 'Unsupported'
+      : permission === 'denied'
+        ? 'Blocked'
+        : enabled
+          ? preferences.masterEnabled ? 'Enabled' : 'Paused'
+          : 'Not enabled';
 
   return (
     <section id="notifications" className="scroll-mt-6 rounded-[24px] border border-emerald-400/20 bg-[#071018]/95 p-5 shadow-[0_18px_48px_rgba(0,0,0,0.24)] sm:p-6">
@@ -244,18 +254,39 @@ export default function NotificationSettings() {
             Choose the updates for this device. Alert delivery requires server-side Web Push, persistent storage, and scheduled monitoring to be configured.
           </p>
         </div>
-        {enabled ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-200">
-            <CircleCheck size={14} aria-hidden="true" /> Subscribed
-          </span>
-        ) : null}
+        <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${
+          permissionLabel === 'Enabled'
+            ? 'border-emerald-400/25 bg-emerald-500/10 text-emerald-200'
+            : permissionLabel === 'Blocked'
+              ? 'border-rose-400/25 bg-rose-500/10 text-rose-200'
+              : 'border-white/10 bg-white/[0.04] text-slate-300'
+        }`}>
+          {permissionLabel === 'Enabled' ? <CircleCheck size={14} aria-hidden="true" /> : null}
+          {permissionLabel}
+        </span>
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+      <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border border-white/10 bg-[#0a1320] p-4">
+        <input
+          type="checkbox"
+          checked={preferences.masterEnabled}
+          disabled={loading || busy || !available}
+          onChange={(event) => void updatePreferences({ ...preferences, masterEnabled: event.target.checked })}
+          className="mt-1 h-4 w-4 shrink-0 accent-emerald-400"
+        />
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold text-white">All notifications</span>
+          <span className="mt-1 block text-xs leading-5 text-slate-400">Pause or resume every alert on this device without removing its subscription.</span>
+        </span>
+      </label>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {([
           { key: 'goals', title: 'Goal alerts', description: 'When a live match score increases.', icon: Goal },
           { key: 'kickoffs', title: 'Kickoff reminders', description: 'A reminder before a scheduled match.', icon: AlarmClock },
-          { key: 'fullTime', title: 'Full-time results', description: 'When the provider confirms full time.', icon: CircleCheck }
+          { key: 'halfTime', title: 'Half-time', description: 'When the provider explicitly reports the half-time break.', icon: CircleCheck },
+          { key: 'fullTime', title: 'Full-time results', description: 'When the provider confirms full time.', icon: CircleCheck },
+          { key: 'majorMatches', title: 'Major-match alerts', description: 'Include selected priority clubs below.', icon: Bell }
         ] as const).map(({ key, title, description, icon: Icon }) => (
           <label key={key} className={`flex cursor-pointer items-start gap-3 rounded-2xl border border-white/8 bg-[#0a1320] p-4 transition hover:border-emerald-400/30 ${busy ? 'opacity-60' : ''}`}>
             <input
@@ -271,6 +302,67 @@ export default function NotificationSettings() {
             </span>
           </label>
         ))}
+        <div className="flex items-start gap-3 rounded-2xl border border-white/8 bg-[#0a1320] p-4 opacity-70">
+          <input type="checkbox" checked={preferences.redCards} disabled aria-label="Red-card alerts unavailable" className="mt-1 h-4 w-4 shrink-0 accent-emerald-400" />
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-white">Red cards</span>
+            <span className="mt-1 block text-xs leading-5 text-slate-400">Unavailable: the current football feed does not provide a match event timeline.</span>
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-white/8 bg-[#0a1320] p-4">
+        <h3 className="text-sm font-semibold text-white">Priority clubs</h3>
+        <p className="mt-1 text-xs leading-5 text-slate-400">Choose which major-club matches can trigger alerts. At least one selected club must be playing unless you follow a competition below.</p>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+          {PRIORITY_CLUBS.map((club) => {
+            const checked = preferences.followedClubs.includes(club.id);
+            return (
+              <label key={club.id} className="flex min-h-10 min-w-0 cursor-pointer items-center gap-2 rounded-lg border border-white/5 px-2.5 py-2 text-xs text-slate-200 hover:border-emerald-400/25">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={loading || busy || !available}
+                  onChange={() => void updatePreferences({
+                    ...preferences,
+                    followedClubs: checked
+                      ? preferences.followedClubs.filter((id) => id !== club.id)
+                      : [...preferences.followedClubs, club.id]
+                  })}
+                  className="h-4 w-4 shrink-0 accent-emerald-400"
+                />
+                <span className="truncate">{club.name}</span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-white/8 bg-[#0a1320] p-4">
+        <h3 className="text-sm font-semibold text-white">Follow competitions</h3>
+        <p className="mt-1 text-xs leading-5 text-slate-400">Competition alerts are matched only when the provider identifies the competition reliably.</p>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {NOTIFICATION_COMPETITIONS.map((competition) => {
+            const checked = preferences.followedCompetitions.includes(competition.id);
+            return (
+              <label key={competition.id} className="flex min-h-10 min-w-0 cursor-pointer items-center gap-2 rounded-lg border border-white/5 px-2.5 py-2 text-xs text-slate-200 hover:border-emerald-400/25">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={loading || busy || !available}
+                  onChange={() => void updatePreferences({
+                    ...preferences,
+                    followedCompetitions: checked
+                      ? preferences.followedCompetitions.filter((id) => id !== competition.id)
+                      : [...preferences.followedCompetitions, competition.id]
+                  })}
+                  className="h-4 w-4 shrink-0 accent-emerald-400"
+                />
+                <span className="truncate">{competition.name}</span>
+              </label>
+            );
+          })}
+        </div>
       </div>
 
       <div className="mt-4 flex flex-col gap-4 rounded-2xl border border-white/8 bg-[#0a1320] p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -309,7 +401,7 @@ export default function NotificationSettings() {
             type="button"
             onClick={() => void enableNotifications()}
             disabled={busy || loading || !available}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-[#04150d] shadow-[0_10px_25px_rgba(16,185,129,0.18)] transition hover:bg-emerald-400 disabled:cursor-wait disabled:opacity-60"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-[#04150d] shadow-[0_10px_25px_rgba(0,232,152,0.18)] transition hover:bg-emerald-400 disabled:cursor-wait disabled:opacity-60"
           >
             <Bell size={17} aria-hidden="true" /> {busy ? 'Enabling…' : loading ? 'Checking device…' : 'Enable Notifications'}
           </button>

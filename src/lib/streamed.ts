@@ -1,5 +1,7 @@
 export type MatchStatus = 'scheduled' | 'live' | 'halftime' | 'finished' | 'postponed' | 'cancelled' | 'abandoned' | 'suspended' | 'unknown';
 
+export type StreamedTeam = { id?: string; name: string; badge: string };
+
 export type StreamedMatch = {
   id: string;
   title: string;
@@ -13,10 +15,7 @@ export type StreamedMatch = {
   elapsed?: number;
   score?: { home?: number; away?: number };
   competition?: { id: string; name: string; logo?: string };
-  teams?: {
-    home?: { name: string; badge: string };
-    away?: { name: string; badge: string };
-  };
+  teams?: { home?: StreamedTeam; away?: StreamedTeam };
   sources?: Array<{ source: string; id: string }>;
 };
 
@@ -201,13 +200,17 @@ function normalizeRawMatch(value: unknown, liveIds: Set<string>): StreamedMatch 
     id: raw.id,
     title: raw.title,
     category: typeof raw.category === 'string' ? raw.category : undefined,
-    competition: typeof competitionId === 'string' || typeof competitionId === 'number'
+    competition: typeof competitionId === 'string' || typeof competitionId === 'number' || typeof raw.category === 'string'
       ? {
-          id: String(competitionId),
+          id: String(competitionId ?? raw.category),
           name: typeof competitionName === 'string' ? competitionName : typeof raw.category === 'string' ? raw.category : 'Football',
           logo: typeof competitionLogo === 'string' ? competitionLogo : undefined
         }
       : undefined,
+    teams: raw.teams && typeof raw.teams === 'object' ? {
+      home: normalizeTeam((raw.teams as Record<string, unknown>).home),
+      away: normalizeTeam((raw.teams as Record<string, unknown>).away)
+    } : undefined,
     date: kickoffTime,
     kickoffTime,
     timezone: 'UTC',
@@ -221,6 +224,17 @@ function normalizeRawMatch(value: unknown, liveIds: Set<string>): StreamedMatch 
           away: typeof (raw.score as Record<string, unknown>).away === 'number' ? (raw.score as Record<string, number>).away : undefined
         }
       : undefined,
+  };
+}
+
+function normalizeTeam(value: unknown): StreamedTeam | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const team = value as Record<string, unknown>;
+  if (typeof team.name !== 'string') return undefined;
+  return {
+    id: typeof team.id === 'string' || typeof team.id === 'number' ? String(team.id) : undefined,
+    name: team.name,
+    badge: typeof team.badge === 'string' ? team.badge : ''
   };
 }
 

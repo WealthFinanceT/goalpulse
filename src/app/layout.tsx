@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Analytics } from '@vercel/analytics/react';
 import PwaInstall from '@/components/PwaInstall';
+import MobileNotificationPrompt from '@/components/MobileNotificationPrompt';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -20,7 +21,9 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0b1020',
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#090a10',
   viewportFit: 'cover'
 };
 
@@ -29,6 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         {children}
+        <MobileNotificationPrompt />
         <PwaInstall />
         <Analytics />
       </body>

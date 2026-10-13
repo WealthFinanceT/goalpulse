@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { StreamedMatch } from '@/lib/streamed';
 import { notificationPermissionMessage } from '@/lib/notifications/browser';
-import { detectMatchEvents, enqueueDetectedEvents, isKickoffEventStillValid } from '@/lib/notifications/events';
+import { detectMatchEvents, enqueueDetectedEvents, isEventEnabledForPreferences, isKickoffEventStillValid } from '@/lib/notifications/events';
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   type MatchSnapshot,
@@ -13,6 +13,7 @@ import {
   parseNotificationPreferences,
   parsePushSubscription
 } from '@/lib/notifications/validation';
+import { matchPriorityClubIds } from '@/lib/notifications/catalog';
 
 const now = Date.UTC(2026, 9, 11, 12, 0);
 
@@ -155,6 +156,60 @@ test('notifies full time only for an explicit provider status and valid non-regr
   );
 });
 
+test('detects provider-confirmed half-time once and includes available match context', () => {
+  const current = match({
+    status: 'halftime',
+    score: { home: 1, away: 0 },
+    teams: {
+      home: { name: 'Arsenal', badge: 'https://example.com/arsenal.png' },
+      away: { name: 'Chelsea', badge: 'https://example.com/chelsea.png' }
+    }
+  });
+  const first = detectMatchEvents([current], snapshots(match()), goalsAndResultsEnabled, now);
+  assert.equal(first.some((event) => event.kind === 'half-time'), true);
+  assert.deepEqual(first.find((event) => event.kind === 'half-time')?.clubIds, ['arsenal', 'chelsea']);
+  assert.equal(
+    detectMatchEvents([current], snapshots(current), goalsAndResultsEnabled, now)
+      .some((event) => event.kind === 'half-time'),
+    false
+  );
+});
+
+test('matches priority clubs through normalized aliases without duplicating a fixture', () => {
+  const fixture = match({
+    teams: {
+      home: { name: 'Man. City', badge: '' },
+      away: { name: 'Manchester City FC', badge: '' }
+    }
+  });
+  assert.deepEqual(matchPriorityClubIds(fixture), ['manchester-city']);
+});
+
+test('filters events by master, event type, priority club, and selected competition', () => {
+  const event: NotificationEvent = {
+    id: 'event',
+    kind: 'goal',
+    matchId: 'fixture-123',
+    matchTitle: 'Arsenal vs Chelsea',
+    body: 'Arsenal 1–0 Chelsea',
+    url: '/match/fixture-123',
+    clubIds: ['arsenal', 'chelsea'],
+    competitionIds: ['premier-league'],
+    createdAt: now
+  };
+  const defaults = { ...DEFAULT_NOTIFICATION_PREFERENCES };
+  assert.equal(isEventEnabledForPreferences(defaults, event), true);
+  assert.equal(isEventEnabledForPreferences({ ...defaults, masterEnabled: false }, event), false);
+  assert.equal(isEventEnabledForPreferences({ ...defaults, goals: false }, event), false);
+  assert.equal(isEventEnabledForPreferences({ ...defaults, majorMatches: false, followedClubs: [] }, event), false);
+  assert.equal(isEventEnabledForPreferences({
+    ...defaults,
+    majorMatches: false,
+    followedClubs: [],
+    followedCompetitions: ['premier-league']
+  }, event), true);
+});
+
 test('schedules a kickoff reminder when due and reports the accurate time for late discovery', () => {
   const kickoffTime = now + 8 * 60_000;
   const preferences = [{ ...DEFAULT_NOTIFICATION_PREFERENCES, kickoffReminderMinutes: 15 as const }];
@@ -225,6 +280,18 @@ test('rejects invalid subscription endpoints and malformed keys', () => {
     keys: { p256dh: 'invalid', auth: 'invalid' }
   }), null);
   assert.equal(parseNotificationPreferences({ goals: true, kickoffs: true, fullTime: true, kickoffReminderMinutes: 1 }), null);
+});
+
+test('migrates legacy preference records to default priority-club coverage', () => {
+  const parsed = parseNotificationPreferences({
+    goals: true,
+    kickoffs: true,
+    fullTime: true,
+    kickoffReminderMinutes: 15
+  });
+  assert.deepEqual(parsed?.followedClubs, DEFAULT_NOTIFICATION_PREFERENCES.followedClubs);
+  assert.equal(parsed?.masterEnabled, true);
+  assert.equal(parsed?.halfTime, false);
 });
 
 test('accepts an HTTPS push-service endpoint with valid subscription keys', () => {

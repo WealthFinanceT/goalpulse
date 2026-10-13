@@ -1,4 +1,4 @@
-const CACHE = 'goal-pulse-static-v4';
+const CACHE = 'goal-pulse-static-v5';
 const STATIC_ASSETS = [
   '/offline.html',
   '/manifest.webmanifest',
@@ -45,6 +45,8 @@ self.addEventListener('push', (event) => {
   const kinds = {
     goal: 'Goal update',
     kickoff: 'Kickoff reminder',
+    'half-time': 'Half-time',
+    'red-card': 'Red card',
     'full-time': 'Full-time result'
   };
   const kind = typeof payload.kind === 'string' && typeof kinds[payload.kind] === 'string' ? payload.kind : '';
@@ -56,10 +58,14 @@ self.addEventListener('push', (event) => {
     ? payload.tag
     : undefined;
 
+  const image = typeof payload.image === 'string' && /^https:\/\/.{1,490}$/.test(payload.image)
+    ? payload.image
+    : undefined;
   event.waitUntil(self.registration.showNotification(kind ? `${kinds[kind]} · ${title}` : title, {
     body,
     icon: '/icon-192.png',
     badge: '/icon-192.png',
+    image,
     tag,
     renotify: false,
     data: { url: typeof payload.url === 'string' ? payload.url : '/' }

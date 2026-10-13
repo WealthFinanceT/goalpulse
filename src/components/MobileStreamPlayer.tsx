@@ -27,6 +27,7 @@ export default function MobileStreamPlayer({ src, title, streamKind, onPlaybackE
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [fullscreenMessage, setFullscreenMessage] = useState('');
   const [retryToken, setRetryToken] = useState(0);
   const resolvedStreamKind = streamKind || detectStreamKind(src);
   playbackErrorRef.current = onPlaybackError;
@@ -35,17 +36,25 @@ export default function MobileStreamPlayer({ src, title, streamKind, onPlaybackE
     if (typeof window === 'undefined') return;
 
     function handleFullscreenChange() {
-      setIsFullscreen(Boolean(document.fullscreenElement));
+      setIsFullscreen(document.fullscreenElement === playerRef.current);
+    }
+    function handleNativeFullscreenChange(event: Event) {
+      setIsFullscreen(event.type === 'webkitbeginfullscreen');
     }
 
+    const video = videoRef.current;
     if (typeof document !== 'undefined') {
       document.addEventListener('fullscreenchange', handleFullscreenChange);
     }
+    video?.addEventListener('webkitbeginfullscreen', handleNativeFullscreenChange);
+    video?.addEventListener('webkitendfullscreen', handleNativeFullscreenChange);
 
     return () => {
       if (typeof document !== 'undefined') {
         document.removeEventListener('fullscreenchange', handleFullscreenChange);
       }
+      video?.removeEventListener('webkitbeginfullscreen', handleNativeFullscreenChange);
+      video?.removeEventListener('webkitendfullscreen', handleNativeFullscreenChange);
     };
   }, []);
 
@@ -137,10 +146,23 @@ export default function MobileStreamPlayer({ src, title, streamKind, onPlaybackE
 
   async function toggleFullscreen() {
     if (typeof document === 'undefined' || !playerRef.current) return;
+    setFullscreenMessage('');
 
-    const video = videoRef.current as HTMLVideoElement & { webkitEnterFullscreen?: () => void } | null;
+    const video = videoRef.current as HTMLVideoElement & { webkitEnterFullscreen?: () => void; webkitExitFullscreen?: () => void } | null;
+    if (isFullscreen && video?.webkitExitFullscreen) {
+      try {
+        video.webkitExitFullscreen();
+      } catch {
+        setFullscreenMessage('Fullscreen could not be closed. Use the player’s exit control instead.');
+      }
+      return;
+    }
     if (video?.webkitEnterFullscreen) {
-      video.webkitEnterFullscreen();
+      try {
+        video.webkitEnterFullscreen();
+      } catch {
+        setFullscreenMessage('Fullscreen is unavailable. Use your browser’s fullscreen controls instead.');
+      }
       return;
     }
     if (document.fullscreenElement && typeof document.exitFullscreen === 'function') {
@@ -152,21 +174,25 @@ export default function MobileStreamPlayer({ src, title, streamKind, onPlaybackE
       requestFullscreen?: () => Promise<void>;
     };
 
-    if (typeof element.requestFullscreen !== 'function') return;
+    if (typeof element.requestFullscreen !== 'function') {
+      setFullscreenMessage('Fullscreen is unavailable. Use your browser’s fullscreen controls instead.');
+      return;
+    }
     try {
       await element.requestFullscreen();
-    } catch {}
+    } catch {
+      setFullscreenMessage('Fullscreen could not be started. Check your browser permissions and try again.');
+    }
   }
 
   return (
-    <div ref={playerRef} className="group relative aspect-video w-full overflow-hidden bg-black">
+    <div ref={playerRef} className="stream-player group relative aspect-video w-full overflow-hidden bg-black">
       {resolvedStreamKind === 'iframe' ? (
         <iframe
           key={src}
           src={src}
           title={title}
           allow="autoplay; fullscreen; picture-in-picture"
-          allowFullScreen
           onLoad={() => {
             if (iframeTimerRef.current !== null) window.clearTimeout(iframeTimerRef.current);
             setIsLoading(false);
@@ -196,7 +222,7 @@ export default function MobileStreamPlayer({ src, title, streamKind, onPlaybackE
       )}
       {isLoading && !errorMessage ? <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/35 px-4 text-center text-sm text-slate-200">Loading stream...</div> : null}
       {errorMessage ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#05070d] px-5 text-center">
+        <div role="alert" className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#05070d] px-5 text-center">
           <p className="text-sm text-slate-200">{errorMessage}</p>
           <button type="button" onClick={retryStream} className="rounded-full border border-emerald-400/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-200">Retry stream</button>
         </div>
@@ -206,10 +232,11 @@ export default function MobileStreamPlayer({ src, title, streamKind, onPlaybackE
           onClick={toggleFullscreen}
           aria-label={isFullscreen ? 'Exit fullscreen' : 'Watch in fullscreen'}
           title={isFullscreen ? 'Exit fullscreen' : 'Watch in fullscreen'}
-          className="absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/70 text-white opacity-100 transition hover:border-emerald-300 hover:bg-black/90"
+          className="absolute right-3 top-3 inline-flex h-11 w-11 items-center justify-center rounded-lg border border-white/20 bg-black/70 text-white opacity-100 transition hover:border-emerald-300 hover:bg-black/90"
         >
           {isFullscreen ? <Minimize2 size={18} strokeWidth={1.8} aria-hidden="true" /> : <Maximize2 size={18} strokeWidth={1.8} aria-hidden="true" />}
       </button>
+      {fullscreenMessage ? <p role="status" className="absolute inset-x-3 bottom-3 rounded-lg border border-white/10 bg-black/85 px-3 py-2 text-center text-xs text-white">{fullscreenMessage}</p> : null}
     </div>
   );
 }

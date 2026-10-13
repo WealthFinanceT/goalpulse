@@ -34,9 +34,9 @@ end
 redis.call('SET', KEYS[1], ARGV[2])
 redis.call('SADD', KEYS[2], ARGV[1])
 local record = cjson.decode(ARGV[2])
-if record.preferences.goals then redis.call('SADD', KEYS[3], ARGV[1]) end
-if record.preferences.fullTime then redis.call('SADD', KEYS[4], ARGV[1]) end
-if record.preferences.kickoffs then
+if record.preferences.masterEnabled ~= false and record.preferences.goals then redis.call('SADD', KEYS[3], ARGV[1]) end
+if record.preferences.masterEnabled ~= false and record.preferences.fullTime then redis.call('SADD', KEYS[4], ARGV[1]) end
+if record.preferences.masterEnabled ~= false and record.preferences.kickoffs then
   local kickoffMinutes = tonumber(record.preferences.kickoffReminderMinutes)
   local kickoffIndex = 5
   if kickoffMinutes == 10 then kickoffIndex = 6
@@ -76,9 +76,9 @@ record.preferences = cjson.decode(ARGV[4])
 record.updatedAt = tonumber(ARGV[5])
 redis.call('SET', KEYS[1], cjson.encode(record))
 redis.call('SADD', KEYS[2], ARGV[6])
-if record.preferences.goals then redis.call('SADD', KEYS[3], ARGV[6]) end
-if record.preferences.fullTime then redis.call('SADD', KEYS[4], ARGV[6]) end
-if record.preferences.kickoffs then
+if record.preferences.masterEnabled ~= false and record.preferences.goals then redis.call('SADD', KEYS[3], ARGV[6]) end
+if record.preferences.masterEnabled ~= false and record.preferences.fullTime then redis.call('SADD', KEYS[4], ARGV[6]) end
+if record.preferences.masterEnabled ~= false and record.preferences.kickoffs then
   local kickoffMinutes = tonumber(record.preferences.kickoffReminderMinutes)
   local kickoffIndex = 5
   if kickoffMinutes == 10 then kickoffIndex = 6
@@ -312,5 +312,6 @@ export async function consumeRateLimit(
 export function preferenceIndex(preferences: NotificationPreferences, kind: NotificationEvent['kind']): string {
   if (kind === 'goal') return notificationKeys.goals;
   if (kind === 'full-time') return notificationKeys.fullTime;
+  if (kind === 'half-time' || kind === 'red-card') return notificationKeys.subscriptions;
   return notificationKeys.kickoffs(preferences.kickoffReminderMinutes);
 }

@@ -1,13 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
-import { Bell, Bookmark, CalendarDays, House, Moon, Play, PlayCircle, Radio, Settings, Sun, Trophy } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowRight, CalendarDays, Play, Radio, Trophy } from 'lucide-react';
 import FilteredMatches from '@/components/FilteredMatches';
+import SiteShell from '@/components/SiteShell';
 import type { StreamedMatch } from '@/lib/streamed';
 import { useMatchPolling } from '@/components/useMatchPolling';
-import MobileBottomNav from '@/components/MobileBottomNav';
-import FixtureSearch from '@/components/FixtureSearch';
 
 export default function DashboardContent({
   initialMatches,
@@ -20,245 +19,119 @@ export default function DashboardContent({
 }) {
   const [matches, setMatches] = useState(initialMatches);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState('');
   const refreshedMatches = useMatchPolling(matches);
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-  }, [theme]);
-
-  useEffect(() => {
-    const savedTheme = window.localStorage.getItem('goal-pulse-theme');
-    if (savedTheme === 'light' || savedTheme === 'dark') {
-      setTheme(savedTheme);
-    }
-  }, []);
-
-  useEffect(() => { setMatches(initialMatches); }, [initialMatches]);
+    setMatches(initialMatches);
+  }, [initialMatches]);
 
   async function loadMoreFixtures() {
     if (loadingMore || matches.length >= totalMatches) return;
     setLoadingMore(true);
+    setLoadMoreError('');
     try {
       const response = await fetch(`/api/matches?offset=${matches.length}&limit=9`);
-      if (!response.ok) return;
+      if (!response.ok) throw new Error('Unable to load more fixtures. Please try again.');
       const page = await response.json() as { matches: StreamedMatch[] };
       setMatches((current) => {
         const ids = new Set(current.map((match) => match.id));
         return [...current, ...page.matches.filter((match) => !ids.has(match.id))];
       });
-    } finally { setLoadingMore(false); }
+    } catch (error) {
+      setLoadMoreError(error instanceof Error ? error.message : 'Unable to load more fixtures. Please try again.');
+    } finally {
+      setLoadingMore(false);
+    }
   }
 
-  function toggleTheme() {
-    const nextTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(nextTheme);
-    window.localStorage.setItem('goal-pulse-theme', nextTheme);
-  }
-
-  const socialLinks = [
-    { label: 'Instagram', href: 'https://www.instagram.com/goalpulse', logo: '/icons/instagram.svg', icon: null },
-    { label: 'YouTube', href: 'https://www.youtube.com/@goalpulse', logo: null, icon: Play },
-    { label: 'Telegram', href: 'https://t.me/goalpulse', logo: '/icons/telegram.svg', icon: null },
-    { label: 'WhatsApp', href: 'https://chat.whatsapp.com/HKxIeuTdx722izewdAHpZY', logo: '/icons/whatsapp.svg', icon: null }
+  const quickLinks = [
+    { label: 'Live centre', description: 'Follow every match currently in play.', href: '/live', icon: Radio },
+    { label: 'Fixtures', description: 'See the next scheduled kick-offs.', href: '/upcoming', icon: CalendarDays },
+    { label: 'Competitions', description: 'Browse leagues in the match feed.', href: '/leagues', icon: Trophy }
   ];
 
-  const navItems = [
-    { label: 'Home', href: '/', active: true, icon: House },
-    { label: 'Live', href: '/live', active: false, icon: Radio },
-    { label: 'Upcoming', href: '/upcoming', active: false, icon: CalendarDays },
-    { label: 'Leagues', href: '/leagues', active: false, icon: Trophy },
-    { label: 'My Watchlist', href: '/watchlist', active: false, icon: Bookmark },
-    { label: 'Highlights', href: '/highlights', active: false, icon: PlayCircle },
-    { label: 'Settings', href: '/settings', active: false, icon: Settings }
+  const socialLinks = [
+    { label: 'Instagram', href: 'https://www.instagram.com/goalpulse' },
+    { label: 'YouTube', href: 'https://www.youtube.com/@goalpulse' },
+    { label: 'Telegram', href: 'https://t.me/goalpulse' },
+    { label: 'WhatsApp', href: 'https://chat.whatsapp.com/HKxIeuTdx722izewdAHpZY' }
   ];
 
   return (
-    <main data-theme={theme} className="min-h-screen bg-[#040910] px-3 py-3 pb-24 text-white sm:px-4 lg:px-5 lg:pb-5 xl:px-6">
-      <div className="mx-auto max-w-[1600px] lg:flex lg:gap-5">
-        <aside className="mb-4 hidden w-full lg:sticky lg:top-4 lg:mb-5 lg:block lg:h-[calc(100vh-32px)] lg:w-[256px] lg:self-start xl:w-[260px]">
-          <div className="flex items-center gap-3 overflow-x-auto rounded-[28px] border border-white/8 bg-[#071018]/90 p-2 shadow-[0_22px_55px_rgba(2,6,23,0.82)] backdrop-blur-xl lg:h-full lg:flex-col lg:items-stretch lg:overflow-y-auto lg:overflow-x-hidden lg:p-4">
-            <div className="flex shrink-0 items-center gap-3 px-2 py-2">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-400/30 bg-gradient-to-br from-emerald-400 to-green-600 text-lg font-black text-[#05130d] shadow-[0_10px_25px_rgba(16,185,129,0.45)]">
-                G
-              </div>
-              <div>
-                <p className="text-[0.58rem] font-semibold uppercase tracking-[0.30em] text-emerald-300/80">Goal Pulse</p>
-                <h2 className="mt-1 text-lg font-bold tracking-[-0.04em] text-white">Football hub</h2>
-              </div>
-            </div>
-
-            <nav className="flex shrink-0 items-center gap-2 lg:mt-6 lg:block lg:space-y-2">
-              {navItems.map((item) => (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  className={`flex shrink-0 items-center justify-between rounded-2xl px-3 py-3 text-sm font-medium transition-all lg:py-3.5 lg:text-[0.97rem] ${
-                    item.active
-                      ? 'border border-emerald-500/30 bg-[#0b2c22] text-emerald-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]'
-                      : 'text-slate-300 hover:bg-white/4 hover:text-white'
-                  }`}
-                >
-                  <span className="flex items-center gap-2.5 lg:gap-3"><item.icon size={18} strokeWidth={1.8} aria-hidden="true" />{item.label}</span>
-                  {item.label === 'Home' ? <span className="h-2 w-2 rounded-full bg-emerald-400" /> : null}
-                </a>
-              ))}
-            </nav>
-
-            <div className="hidden space-y-5 pt-7 lg:mt-auto lg:block">
-            <div className="rounded-[22px] border border-white/8 bg-[#0b1520]/80 p-4">
-              <p className="text-[0.66rem] font-semibold uppercase tracking-[0.24em] text-slate-400">Follow us</p>
-              <div className="mt-3 flex items-center gap-3">
-                {socialLinks.map(({ label, href, icon: Icon, logo }) => (
-                  <a
-                    key={label}
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`Open Goal Pulse on ${label}`}
-                    title={label}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.02] text-slate-300 transition hover:border-emerald-400/40 hover:bg-emerald-500/10 hover:text-emerald-300"
-                  >
-                    {logo ? (
-                      <Image
-                        src={logo}
-                        alt=""
-                        aria-hidden="true"
-                        width={18}
-                        height={18}
-                        unoptimized
-                        className="h-[18px] w-[18px] shrink-0 object-contain"
-                      />
-                    ) : Icon ? (
-                      <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
-                    ) : null}
-                  </a>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-[22px] border border-white/8 bg-[#0b1520]/80 p-4">
-              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-slate-400">Never miss a match</p>
-              <p className="mt-2 text-sm leading-6 text-slate-300">Get notified for live matches and important updates.</p>
-              <a href="/settings#notifications" className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/15 px-3 py-2.5 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/20">
-                <Bell size={16} strokeWidth={1.8} aria-hidden="true" />
-                Notification Settings
-              </a>
-            </div>
-            </div>
+    <SiteShell searchMatches={refreshedMatches}>
+      <section data-theme-hero className="relative mb-5 overflow-hidden rounded-2xl border border-white/10 bg-[#11121a] px-5 py-7 shadow-[0_18px_48px_rgba(0,0,0,0.28)] sm:px-7 sm:py-9 lg:mb-6 lg:rounded-3xl lg:px-9 lg:py-10">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-cover bg-[center_42%] opacity-50"
+          style={{ backgroundImage: "linear-gradient(90deg, rgba(9,10,16,0.97) 0%, rgba(9,10,16,0.87) 48%, rgba(9,10,16,0.54) 100%), url('https://images.unsplash.com/photo-1547347298-4074fc3086f0?auto=format&fit=crop&w=1600&q=80')" }}
+        />
+        <div className="relative z-10 max-w-3xl">
+          <p className="flex items-center gap-2 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-emerald-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            Your football, in focus
+          </p>
+          <h1 className="mt-4 max-w-2xl text-[clamp(2.35rem,7vw,4.6rem)] font-bold leading-[0.99] tracking-[-0.055em] text-white">
+            Every match.
+            <span className="block text-emerald-300">One place.</span>
+          </h1>
+          <p className="mt-4 max-w-xl text-sm leading-6 text-slate-200/85 sm:text-base sm:leading-7">
+            Live scores, upcoming fixtures and match streams, follow the football that matters to you.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-2.5">
+            <Link href="/live" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-[#03160d] transition hover:bg-emerald-400">
+              <Play size={15} fill="currentColor" aria-hidden="true" /> Live matches
+            </Link>
+            <Link href="/upcoming" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]">
+              <CalendarDays size={16} aria-hidden="true" /> Upcoming fixtures
+            </Link>
           </div>
-        </aside>
-
-        <div id="overview" className="min-w-0 flex-1">
-          <header className="relative z-[60] mb-5 flex overflow-visible flex-col gap-3 rounded-[26px] border border-white/8 bg-[#071018]/85 px-4 py-3 shadow-[0_12px_30px_rgba(2,6,23,0.45)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between lg:px-5">
-            <FixtureSearch matches={refreshedMatches} />
-
-            <div className="flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={toggleTheme}
-                aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-                title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg text-slate-200 transition hover:border-emerald-400/40 hover:text-emerald-300"
-              >
-                {theme === 'dark' ? <Sun size={19} strokeWidth={1.8} aria-hidden="true" /> : <Moon size={19} strokeWidth={1.8} aria-hidden="true" />}
-              </button>
-              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-500/30 bg-[#0d2d24] text-[0.7rem] font-bold text-emerald-200">GP</div>
-            </div>
-          </header>
-
-          <section data-theme-hero className="relative mb-6 overflow-hidden rounded-[30px] border border-emerald-400/15 bg-[#071018]/95 px-6 py-7 shadow-[0_30px_80px_rgba(2,6,23,0.8)] sm:px-7 lg:px-8 lg:py-8 xl:px-9">
-            <div
-              className="absolute inset-0 bg-cover bg-center opacity-90"
-              style={{
-                backgroundImage:
-                  "linear-gradient(90deg, rgba(6,11,18,0.92) 0%, rgba(6,11,18,0.76) 30%, rgba(6,11,18,0.2) 60%, rgba(6,11,18,0.8) 100%), url('https://images.unsplash.com/photo-1547347298-4074fc3086f0?auto=format&fit=crop&w=1200&q=80')"
-              }}
-            />
-
-            <div className="relative z-10 flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
-              <div className="max-w-[650px]">
-                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-emerald-300">Welcome to Goal Pulse</p>
-                <h1 className="mt-4 max-w-[620px] text-[2.1rem] font-black leading-[0.95] tracking-[-0.06em] text-white sm:text-5xl xl:text-[4.1rem]">
-                  Stream football.
-                  <span className="block text-emerald-400">Live.</span>
-                  <span className="block text-white">Anytime. Anywhere.</span>
-                </h1>
-                <p className="mt-4 max-w-xl text-sm leading-7 text-slate-200/85 sm:text-base">
-                  Access the best live streams, upcoming fixtures, and match highlights—all in one clean dashboard.
-                </p>
-                <div className="mt-7 flex flex-wrap items-center gap-3">
-                  <a
-                    href="#live"
-                    className="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-[#04150d] shadow-[0_16px_36px_rgba(16,185,129,0.38)] transition hover:bg-emerald-400"
-                  >
-                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#04150d] text-emerald-400"><Play size={12} fill="currentColor" strokeWidth={2.5} aria-hidden="true" /></span>
-                    Explore Live Matches
-                  </a>
-                  <a
-                    href="#fixtures"
-                    className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/25 hover:bg-white/10"
-                  >
-                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-white/20"><CalendarDays size={13} strokeWidth={1.8} aria-hidden="true" /></span>
-                    View Upcoming
-                  </a>
-                </div>
-              </div>
-
-              <div className="relative hidden w-full max-w-[440px] xl:block">
-                <div className="relative h-[300px]">
-                  <div className="absolute inset-0 rounded-[30px] border border-white/8 bg-[radial-gradient(circle_at_center,_rgba(16,185,129,0.24),transparent_40%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(0,0,0,0.12))]" />
-                  <div className="absolute inset-x-8 bottom-0 h-16 rounded-full bg-emerald-500/20 blur-2xl" />
-                  <div
-                    className="absolute inset-y-0 right-0 w-[90%] rounded-[30px] bg-cover bg-center"
-                    style={{
-                      backgroundImage:
-                        "linear-gradient(90deg, rgba(6,11,18,0.12) 0%, rgba(6,11,18,0.18) 35%, rgba(6,11,18,0.12) 100%), url('https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=900&q=80')"
-                    }}
-                  />
-                  <div className="absolute right-6 top-5 rounded-full border border-emerald-400/30 bg-[#071018]/70 px-3 py-2 text-[0.6rem] font-semibold uppercase tracking-[0.24em] text-emerald-200">
-                    GP
-                  </div>
-                  <div className="absolute bottom-9 right-7 text-[2.8rem] font-black tracking-[-0.08em] text-emerald-400">10</div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {errorMessage ? (
-            <div className="rounded-[26px] border border-red-500/20 bg-red-500/10 p-6 text-red-100 shadow-[0_18px_55px_rgba(127,29,29,0.18)]">
-              <p className="text-base font-semibold">Unable to load matches</p>
-              <p className="mt-2 text-sm text-red-100/80">{errorMessage}</p>
-            </div>
-          ) : (
-            <FilteredMatches matches={refreshedMatches} totalMatches={totalMatches} onLoadMore={loadMoreFixtures} loadingMore={loadingMore} />
-          )}
-
-          <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <div id="fixtures" className="scroll-mt-6 rounded-[24px] border border-white/8 bg-[#071018]/90 p-5 shadow-[0_15px_40px_rgba(0,0,0,0.2)]">
-              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-slate-400">Upcoming</p>
-              <h3 className="mt-2 text-xl font-black text-white">Upcoming fixtures</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-400">Browse the next scheduled matches from the fixture list above.</p>
-            </div>
-            <div id="watchlist" className="scroll-mt-6 rounded-[24px] border border-white/8 bg-[#071018]/90 p-5 shadow-[0_15px_40px_rgba(0,0,0,0.2)]">
-              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-slate-400">My Watchlist</p>
-              <h3 className="mt-2 text-xl font-black text-white">Saved matches</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-400">Save a match from its detail page to build your watchlist.</p>
-            </div>
-            <div id="highlights" className="scroll-mt-6 rounded-[24px] border border-white/8 bg-[#071018]/90 p-5 shadow-[0_15px_40px_rgba(0,0,0,0.2)]">
-              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-slate-400">Highlights</p>
-              <h3 className="mt-2 text-xl font-black text-white">Match highlights</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-400">Highlights will be available here when supplied by the match source.</p>
-            </div>
-            <div id="settings" className="scroll-mt-6 rounded-[24px] border border-white/8 bg-[#071018]/90 p-5 shadow-[0_15px_40px_rgba(0,0,0,0.2)]">
-              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-slate-400">Settings</p>
-              <h3 className="mt-2 text-xl font-black text-white">Dashboard settings</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-400">Use the theme control above to switch between light and dark mode.</p>
-            </div>
-          </section>
         </div>
-      </div>
-      <MobileBottomNav />
-    </main>
+      </section>
+
+      {errorMessage ? (
+        <div role="alert" className="rounded-xl border border-red-500/20 bg-red-500/10 p-5 text-red-100">
+          <p className="text-base font-semibold">Unable to load matches</p>
+          <p className="mt-2 text-sm text-red-100/80">{errorMessage}</p>
+        </div>
+      ) : (
+        <>
+          <FilteredMatches
+            matches={refreshedMatches}
+            totalMatches={totalMatches}
+            onLoadMore={loadMoreFixtures}
+            loadingMore={loadingMore}
+          />
+          {loadMoreError ? <p role="alert" className="mt-3 text-center text-sm text-red-300">{loadMoreError}</p> : null}
+        </>
+      )}
+
+      <section aria-label="Explore Goal Pulse" className="mt-5 grid gap-3 sm:grid-cols-3">
+        {quickLinks.map(({ label, description, href, icon: Icon }) => (
+          <Link key={href} href={href} className="group flex min-w-0 items-start gap-3 rounded-xl border border-white/8 bg-[#071018]/90 p-4 transition-colors hover:border-emerald-400/25 hover:bg-[#11121a] sm:p-5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-emerald-400/15 bg-emerald-500/10 text-emerald-300">
+              <Icon size={17} strokeWidth={1.8} aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center justify-between gap-2 text-sm font-semibold text-white">
+                {label}<ArrowRight size={15} className="shrink-0 text-slate-500 transition group-hover:translate-x-0.5 group-hover:text-emerald-300" aria-hidden="true" />
+              </span>
+              <span className="mt-1 block text-xs leading-5 text-slate-400">{description}</span>
+            </span>
+          </Link>
+        ))}
+      </section>
+
+      <footer className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-white/8 py-4">
+        <p className="text-xs text-slate-500">Goal Pulse · Football, in focus.</p>
+        <nav aria-label="Goal Pulse social channels" className="flex flex-wrap gap-x-4 gap-y-2">
+          {socialLinks.map(({ label, href }) => (
+            <a key={label} href={href} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-slate-400 transition hover:text-emerald-300">
+              {label}
+            </a>
+          ))}
+        </nav>
+      </footer>
+    </SiteShell>
   );
 }
