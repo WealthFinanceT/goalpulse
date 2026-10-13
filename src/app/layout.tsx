@@ -7,16 +7,16 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'Goal Pulse',
   description: 'Football fixtures, live scores and match updates, plus streaming links from Goal Pulse.',
-  manifest: '/manifest.webmanifest',
+  manifest: '/manifest.webmanifest?v=icons-b7d32ecd308c-70d5dec6971f-3c67a64317a2-c4daed634ebf',
   applicationName: 'Goal Pulse',
   appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Goal Pulse' },
   icons: {
     icon: [
-      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
-      { url: '/icon-1024.png', sizes: '1024x1024', type: 'image/png' }
+      { url: '/icon-192.png?v=b7d32ecd308c', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png?v=70d5dec6971f', sizes: '512x512', type: 'image/png' },
+      { url: '/icon-1024.png?v=3c67a64317a2', sizes: '1024x1024', type: 'image/png' }
     ],
-    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }]
+    apple: [{ url: '/apple-touch-icon.png?v=c4daed634ebf', sizes: '180x180', type: 'image/png' }]
   }
 };
 

@@ -1,12 +1,18 @@
-const CACHE = 'goal-pulse-static-v5';
+const CACHE = 'goal-pulse-static-v6';
 const STATIC_ASSETS = [
   '/offline.html',
   '/manifest.webmanifest',
+  '/manifest.webmanifest?v=icons-b7d32ecd308c-70d5dec6971f-3c67a64317a2-c4daed634ebf',
   '/icon-192.png',
+  '/icon-192.png?v=b7d32ecd308c',
   '/icon-512.png',
+  '/icon-512.png?v=70d5dec6971f',
   '/icon-1024.png',
+  '/icon-1024.png?v=3c67a64317a2',
   '/icon-512-maskable.png',
-  '/apple-touch-icon.png'
+  '/icon-512-maskable.png?v=70d5dec6971f',
+  '/apple-touch-icon.png',
+  '/apple-touch-icon.png?v=c4daed634ebf'
 ];
 
 self.addEventListener('install', (event) => {
@@ -29,7 +35,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(fetch(request).catch(() => caches.match('/offline.html', { cacheName: CACHE })));
     return;
   }
-  if (STATIC_ASSETS.includes(url.pathname)) {
+  if (STATIC_ASSETS.some((asset) => new URL(asset, self.location.origin).pathname === url.pathname)) {
     event.respondWith(caches.match(request, { cacheName: CACHE }).then((cached) => cached || fetch(request)));
   }
 });
@@ -63,8 +69,8 @@ self.addEventListener('push', (event) => {
     : undefined;
   event.waitUntil(self.registration.showNotification(kind ? `${kinds[kind]} · ${title}` : title, {
     body,
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    icon: '/icon-192.png?v=b7d32ecd308c',
+    badge: '/icon-192.png?v=b7d32ecd308c',
     image,
     tag,
     renotify: false,

@@ -96,7 +96,7 @@ export default function PwaInstall() {
         </div>
       ) : (
         <button type="button" onClick={install} className="flex w-full items-center gap-3 text-left">
-          <Image src="/icon-192.png" alt="" aria-hidden="true" width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+          <Image src="/icon-192.png?v=b7d32ecd308c" alt="" aria-hidden="true" width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg object-cover" />
           <span>
             <span className="block text-sm font-semibold text-white">Install Goal Pulse</span>
             <span className="flex items-center gap-1 text-xs text-slate-400"><Download size={12} aria-hidden="true" /> Add Goal Pulse to your phone.</span>

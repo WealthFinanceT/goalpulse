@@ -1,15 +1,39 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { CircleAlert, ExternalLink } from 'lucide-react';
 import MobileStreamPlayer from '@/components/MobileStreamPlayer';
 import type { StreamedStream } from '@/lib/streamed';
+import { getStreamSelectionKey, resolveSavedStreamIndex, serializeStreamSelection } from '@/lib/stream-player-state';
 
-export default function StreamSelector({ streams, title }: { streams: StreamedStream[]; title: string }) {
+export default function StreamSelector({ streams, title, matchId, isLive }: { streams: StreamedStream[]; title: string; matchId: string; isLive: boolean }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectionRestored, setSelectionRestored] = useState(false);
   const [failedIndexes, setFailedIndexes] = useState<number[]>([]);
   const [allSourcesFailed, setAllSourcesFailed] = useState(false);
   const selectedStream = streams[selectedIndex] || streams[0];
+
+  useEffect(() => {
+    try {
+      const savedIndex = resolveSavedStreamIndex(
+        streams,
+        window.localStorage.getItem(getStreamSelectionKey(matchId))
+      );
+      if (savedIndex !== null) setSelectedIndex(savedIndex);
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') console.warn('[Goal Pulse] could not restore selected stream', error);
+    }
+    setSelectionRestored(true);
+  }, [matchId, streams]);
+
+  useEffect(() => {
+    if (!selectionRestored || !selectedStream) return;
+    try {
+      window.localStorage.setItem(getStreamSelectionKey(matchId), serializeStreamSelection(selectedStream));
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') console.warn('[Goal Pulse] could not save selected stream', error);
+    }
+  }, [matchId, selectedStream, selectionRestored]);
 
   const handlePlaybackError = useCallback((_message: string) => {
     setFailedIndexes((current) => {
@@ -34,6 +58,10 @@ export default function StreamSelector({ streams, title }: { streams: StreamedSt
     );
   }
 
+  if (!selectionRestored) {
+    return <div className="flex aspect-video items-center justify-center bg-black text-sm text-slate-300">Restoring stream...</div>;
+  }
+
   function selectStream(index: number) {
     setAllSourcesFailed(false);
     setFailedIndexes((current) => current.filter((failedIndex) => failedIndex !== index));
@@ -43,7 +71,7 @@ export default function StreamSelector({ streams, title }: { streams: StreamedSt
   return (
     <>
       <div className="overflow-hidden rounded-2xl border border-white/10 bg-black">
-        <MobileStreamPlayer src={selectedStream.embedUrl} title={title} streamKind={selectedStream.kind} onPlaybackError={handlePlaybackError} />
+        <MobileStreamPlayer src={selectedStream.embedUrl} title={title} streamKind={selectedStream.kind} matchId={matchId} isLive={isLive} onPlaybackError={handlePlaybackError} />
       </div>
 
       <div className="mt-4 space-y-3">

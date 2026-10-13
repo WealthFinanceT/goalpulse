@@ -135,7 +135,7 @@ export default function MobileNotificationPrompt() {
         <button type="button" onClick={dismiss} aria-label="Not now" className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/5 hover:text-white">
           <X size={18} aria-hidden="true" />
         </button>
-        <Image src="/icon-192.png" alt="" aria-hidden="true" width={52} height={52} className="h-[52px] w-[52px] rounded-xl object-cover" priority />
+        <Image src="/icon-192.png?v=b7d32ecd308c" alt="" aria-hidden="true" width={52} height={52} className="h-[52px] w-[52px] rounded-xl object-cover" priority />
         <p className="mt-4 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-emerald-300">Matchday, covered</p>
         <h2 id="mobile-notification-title" className="mt-2 pr-7 text-xl font-bold tracking-tight text-white">Turn on match alerts</h2>
         <p className="mt-2 text-sm leading-6 text-slate-300">

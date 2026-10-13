@@ -46,7 +46,7 @@ export default function SiteShell({ children, searchMatches = EMPTY_MATCHES }: {
         <aside className="mb-4 hidden w-full lg:sticky lg:top-5 lg:mb-0 lg:block lg:h-[calc(100dvh-40px)] lg:w-60 lg:shrink-0 lg:self-start">
           <div className="flex h-full items-center gap-3 overflow-x-auto rounded-2xl border border-white/8 bg-[#071018]/90 p-2 shadow-[0_16px_42px_rgba(2,6,23,0.35)] backdrop-blur-xl lg:flex-col lg:items-stretch lg:overflow-y-auto lg:overflow-x-hidden lg:rounded-2xl lg:p-4">
             <Link href="/" className="flex shrink-0 items-center gap-3 px-2 py-2">
-              <Image src="/icon-192.png" alt="Goal Pulse" width={42} height={42} priority className="h-10 w-10 shrink-0 rounded-xl object-cover" />
+              <Image src="/icon-192.png?v=b7d32ecd308c" alt="Goal Pulse" width={42} height={42} priority className="h-10 w-10 shrink-0 rounded-xl object-cover" />
               <div><p className="text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-emerald-300/80">Goal Pulse</p><h2 className="mt-1 text-base font-bold tracking-[-0.03em] text-white">Football hub</h2></div>
             </Link>
             <nav aria-label="Main navigation" className="flex shrink-0 items-center gap-1.5 lg:mt-6 lg:block lg:space-y-1">
@@ -65,7 +65,7 @@ export default function SiteShell({ children, searchMatches = EMPTY_MATCHES }: {
         <div className="min-w-0 flex-1">
           <header className="relative z-[60] mb-4 flex min-w-0 items-center gap-2 rounded-xl border border-white/8 bg-[#071018]/90 px-3 py-2.5 shadow-[0_10px_26px_rgba(2,6,23,0.28)] backdrop-blur-xl sm:gap-3 sm:px-4 lg:mb-5 lg:rounded-2xl lg:px-5">
             <Link href="/" aria-label="Goal Pulse home" className="shrink-0 lg:hidden">
-              <Image src="/icon-192.png" alt="" aria-hidden="true" width={36} height={36} priority className="h-9 w-9 rounded-lg object-cover" />
+              <Image src="/icon-192.png?v=b7d32ecd308c" alt="" aria-hidden="true" width={36} height={36} priority className="h-9 w-9 rounded-lg object-cover" />
             </Link>
             <FixtureSearch matches={searchMatches} />
             <button type="button" onClick={toggleTheme} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-200 transition hover:border-emerald-400/40 hover:text-emerald-300">{theme === 'dark' ? <Sun size={19} strokeWidth={1.8} aria-hidden="true" /> : <Moon size={19} strokeWidth={1.8} aria-hidden="true" />}</button>

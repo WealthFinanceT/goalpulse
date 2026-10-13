@@ -129,7 +129,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
                       <p className="mt-1 text-amber-200/80">Come back closer to kick-off for the live stream to begin.</p>
                     </div>
                   ) : null}
-                  <StreamSelector streams={streams} title={`${homeName} vs ${awayName}`} />
+                  <StreamSelector key={id} streams={streams} title={`${homeName} vs ${awayName}`} matchId={id} isLive={isLive} />
                 </>
               )}
             </section>

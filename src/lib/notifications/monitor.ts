@@ -97,7 +97,7 @@ async function sendPush(
     title: event.matchTitle,
     body: event.body,
     url: event.url,
-    icon: '/icon-192.png',
+    icon: '/icon-192.png?v=b7d32ecd308c',
     image: safeNotificationImage(event.image),
     tag: event.id
   });
