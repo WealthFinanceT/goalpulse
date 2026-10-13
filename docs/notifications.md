@@ -60,31 +60,32 @@ concurrency and backoff for up to 24 hours; expired push endpoints (HTTP 404 or
 
 ## Monitoring and scheduler
 
-`vercel.json` schedules `/api/notifications/cron` every minute. The endpoint
+`vercel.json` schedules `/api/notifications/cron` once daily at 09:00 UTC, which
+is compatible with Vercel Hobby's daily cron limit. The endpoint
 requires the configured `CRON_SECRET` bearer token and serializes concurrent
 runs with the Redis lock. It reads the existing normalized fixture helpers with
 cache bypassed for this scheduled observation, so a run compares fresh provider
 responses. The whole fixture catalogue and live-status feed are fetched once
-per job run (at most once per minute under the configured schedule); website
+per job run (at most once per day under the configured schedule); website
 requests retain their existing cache behavior. It persists snapshots/events
 before delivery and does not run when a user visits the site.
 
 Vercel's [Cron Jobs usage and pricing](https://vercel.com/docs/cron-jobs/usage-and-pricing)
-documentation lists one-minute minimum intervals and per-minute precision for
-Pro and Enterprise. Hobby is limited to once per day with up to ±59-minute
-timing variation; the one-minute expression in this project will not deploy on
-Hobby. Confirm the linked Vercel project's plan in its dashboard before
-deploying. If it is Hobby, upgrade or replace Vercel Cron with an external
-scheduler; a daily schedule is not suitable for timely goals or kickoff
-reminders.
+documentation limits Hobby to one cron execution per day, with up to ±59-minute
+timing variation. This schedule therefore detects an observable change only
+when the next daily run happens, potentially almost 24 hours later plus
+Vercel's timing variation and provider/push-service latency. It is not
+near-real-time and must not be presented as suitable for live goal alerts.
 
-At one-minute cron intervals, the expected goal/result detection delay is
-typically up to about one minute plus provider response and push-service
-delivery time; missed/late cron invocations add delay. Kickoff reminders are
-evaluated once a minute and may be late by one run. Vercel and push providers
-do not guarantee exact delivery time. Delivery is at-least-once across network
-ambiguities; stable notification tags coalesce duplicate display where the
-browser supports it.
+The monitor intentionally accepts prior event snapshots only when they are
+less than three minutes old. A daily interval exceeds that freshness window,
+so live score increases, half-time transitions, and full-time transitions
+between daily observations generally will not produce alerts. The existing
+5–60-minute kickoff reminder windows are likewise checked only once per day;
+they will usually be missed unless the daily run happens to fall within a
+fixture's reminder window. Vercel and push providers do not guarantee exact
+delivery time. Delivery is at-least-once across network ambiguities; stable
+notification tags coalesce duplicate display where the browser supports it.
 
 The worker checks provider-reported match status and valid score snapshots. It
 does not infer full time from elapsed kickoff time, notify on score regressions,
@@ -152,5 +153,7 @@ fixtures, in which case those fixtures cannot be included reliably.
    ordinary Safari tabs.
 
 Actual push delivery is not operational until Redis, VAPID values, the
-production cron secret, a compatible deployed schedule, and a real browser
-subscription are all configured and verified.
+production cron secret, the daily Hobby cron is deployed, and a real browser
+subscription is configured and verified. The Hobby-compatible daily schedule
+preserves the scheduled monitor but does not provide useful near-real-time live
+match coverage.
