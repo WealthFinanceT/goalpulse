@@ -8,6 +8,50 @@ import SiteShell from '@/components/SiteShell';
 import type { StreamedMatch } from '@/lib/streamed';
 import { useMatchPolling } from '@/components/useMatchPolling';
 
+type SocialPlatform = 'instagram' | 'youtube' | 'telegram' | 'whatsapp';
+
+function SocialIcon({ platform }: { platform: SocialPlatform }) {
+  if (platform === 'youtube') {
+    return (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+        <path fill="#FF0033" d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.6 3.6 12 3.6 12 3.6s-7.6 0-9.4.5A3 3 0 0 0 .5 6.2C0 8 0 12 0 12s0 4 .5 5.8a3 3 0 0 0 2.1 2.1c1.8.5 9.4.5 9.4.5s7.6 0 9.4-.5a3 3 0 0 0 2.1-2.1C24 16 24 12 24 12s0-4-.5-5.8Z" />
+        <path fill="#fff" d="m9.6 15.6 6.3-3.6-6.3-3.6v7.2Z" />
+      </svg>
+    );
+  }
+
+  if (platform === 'whatsapp') {
+    return (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+        <path fill="currentColor" d="M12 2a9.8 9.8 0 0 0-8.4 14.9L2.3 22l5.2-1.3A9.9 9.9 0 1 0 12 2Zm0 17.9a8 8 0 0 1-4.1-1.1l-.3-.2-3.1.8.8-3-.2-.3A8 8 0 1 1 12 19.9Zm4.4-6c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.5.1l-.7.8c-.1.2-.3.2-.5.1a6.5 6.5 0 0 1-1.9-1.2 7 7 0 0 1-1.3-1.6c-.1-.2 0-.4.1-.5l.4-.5.2-.4c.1-.2 0-.3 0-.4l-.7-1.7c-.2-.4-.4-.4-.5-.4h-.5a1 1 0 0 0-.7.3 2.3 2.3 0 0 0-.8 1.7 4 4 0 0 0 .8 2.1 9.2 9.2 0 0 0 3.6 3.4c.5.2.9.4 1.2.5.5.2.9.2 1.3.1.4-.1 1.4-.6 1.6-1.1.2-.5.2-.9.1-1-.1-.1-.2-.2-.4-.3Z" />
+      </svg>
+    );
+  }
+
+  if (platform === 'telegram') {
+    return (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+        <path fill="#2AABEE" d="M21.8 3.2 2.7 10.6c-1.3.5-1.3 1.2-.2 1.6l4.9 1.5 1.9 5.8c.2.6.1.8.7.8.5 0 .7-.2 1-.5l2.4-2.3 5 3.7c.9.5 1.5.2 1.7-.8l3.2-15.1c.3-1.2-.5-1.7-1.5-1.3ZM8.2 13.4l10.6-6.7c.5-.3 1-.1.6.2l-8.8 8-.3 3.4-2.1-4.9Z" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+      <defs>
+        <linearGradient id="instagram-icon-gradient" x1="0" x2="1" y1="1" y2="0">
+          <stop offset="0" stopColor="#FFB13D" />
+          <stop offset=".5" stopColor="#E1306C" />
+          <stop offset="1" stopColor="#833AB4" />
+        </linearGradient>
+      </defs>
+      <rect x="3" y="3" width="18" height="18" rx="5.5" fill="none" stroke="url(#instagram-icon-gradient)" strokeWidth="2" />
+      <circle cx="12" cy="12" r="4" fill="none" stroke="url(#instagram-icon-gradient)" strokeWidth="2" />
+      <circle cx="17.6" cy="6.7" r="1.2" fill="#E1306C" />
+    </svg>
+  );
+}
+
 export default function DashboardContent({
   initialMatches,
   totalMatches,
@@ -51,11 +95,11 @@ export default function DashboardContent({
     { label: 'Competitions', description: 'Browse leagues in the match feed.', href: '/leagues', icon: Trophy }
   ];
 
-  const socialLinks = [
-    { label: 'Instagram', href: 'https://www.instagram.com/goalpulse' },
-    { label: 'YouTube', href: 'https://www.youtube.com/@goalpulse' },
-    { label: 'Telegram', href: 'https://t.me/goalpulse' },
-    { label: 'WhatsApp', href: 'https://chat.whatsapp.com/HKxIeuTdx722izewdAHpZY' }
+  const socialLinks: { label: string; platform: SocialPlatform; href: string }[] = [
+    { label: 'Instagram', platform: 'instagram', href: 'https://www.instagram.com/goalpulse' },
+    { label: 'YouTube', platform: 'youtube', href: 'https://www.youtube.com/@goalpulse' },
+    { label: 'Telegram', platform: 'telegram', href: 'https://t.me/goalpulse' },
+    { label: 'WhatsApp', platform: 'whatsapp', href: 'https://chat.whatsapp.com/HKxIeuTdx722izewdAHpZY' }
   ];
 
   return (
@@ -124,10 +168,18 @@ export default function DashboardContent({
 
       <footer className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-white/8 py-4">
         <p className="text-xs text-slate-500">Goal Pulse · Football, in focus.</p>
-        <nav aria-label="Goal Pulse social channels" className="flex flex-wrap gap-x-4 gap-y-2">
-          {socialLinks.map(({ label, href }) => (
-            <a key={label} href={href} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-slate-400 transition hover:text-emerald-300">
-              {label}
+        <nav aria-label="Goal Pulse social channels" className="flex flex-wrap items-center gap-2">
+          {socialLinks.map(({ label, platform, href }) => (
+            <a
+              key={label}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={label}
+              title={label}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-slate-300 transition hover:border-violet-400/35 hover:bg-violet-500/10 hover:text-violet-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#071018]"
+            >
+              <SocialIcon platform={platform} />
             </a>
           ))}
         </nav>
