@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Maximize2, Minimize2, PictureInPicture2 } from 'lucide-react';
 import type Hls from 'hls.js';
+import type { MediaPlayerClass } from 'dashjs';
 import { getSavedPlaybackPosition, getPlaybackPositionKey } from '@/lib/stream-player-state';
 import { supportsPictureInPicture } from '@/lib/media-capabilities';
+import type { StreamKind } from '@/lib/streaming/types';
 
-type StreamKind = 'iframe' | 'hls' | 'mp4';
+export type { StreamKind } from '@/lib/streaming/types';
 
 function detectStreamKind(src: string): StreamKind {
   try {
@@ -23,6 +25,7 @@ export default function MobileStreamPlayer({ src, title, streamKind, matchId, is
   const playerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const dashRef = useRef<MediaPlayerClass | null>(null);
   const playbackErrorRef = useRef(onPlaybackError);
   const recoveryCountRef = useRef(0);
   const iframeTimerRef = useRef<number | null>(null);
@@ -92,6 +95,8 @@ export default function MobileStreamPlayer({ src, title, streamKind, matchId, is
     const video = videoRef.current;
     hlsRef.current?.destroy();
     hlsRef.current = null;
+    dashRef.current?.reset();
+    dashRef.current = null;
     if (iframeTimerRef.current !== null) window.clearTimeout(iframeTimerRef.current);
     setIsLoading(true);
     setErrorMessage('');
@@ -158,10 +163,37 @@ export default function MobileStreamPlayer({ src, title, streamKind, matchId, is
 
     if (!video) return;
 
-    if (resolvedStreamKind === 'mp4' || video.canPlayType('application/vnd.apple.mpegurl')) {
+    if (resolvedStreamKind === 'mp4' || (resolvedStreamKind === 'hls' && video.canPlayType('application/vnd.apple.mpegurl'))) {
       video.src = src;
       return () => {
         cancelled = true;
+        dashRef.current?.reset();
+        dashRef.current = null;
+        video.removeAttribute('src');
+        video.load();
+      };
+    }
+
+    if (resolvedStreamKind === 'dash') {
+      void import('dashjs').then(({ MediaPlayer, supportsMediaSource }) => {
+        if (cancelled) return;
+        if (!supportsMediaSource()) {
+          reportError('This browser cannot play DASH streams.');
+          return;
+        }
+
+        const player = MediaPlayer().create();
+        dashRef.current = player;
+        player.on(MediaPlayer.events.ERROR, () => {
+          reportError('The DASH stream failed. It may be unavailable, expired, or blocked by the provider.');
+        });
+        player.initialize(video, src, false);
+      }).catch(() => reportError('The DASH player could not be loaded. Try again later.'));
+
+      return () => {
+        cancelled = true;
+        dashRef.current?.reset();
+        dashRef.current = null;
         video.removeAttribute('src');
         video.load();
       };
@@ -206,6 +238,8 @@ export default function MobileStreamPlayer({ src, title, streamKind, matchId, is
       cancelled = true;
       hlsRef.current?.destroy();
       hlsRef.current = null;
+      dashRef.current?.reset();
+      dashRef.current = null;
       video.removeAttribute('src');
       video.load();
     };

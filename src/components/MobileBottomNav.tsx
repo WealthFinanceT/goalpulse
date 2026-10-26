@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { Bookmark, CalendarDays, House, Menu, PlayCircle, Radio, Settings, Trophy } from 'lucide-react';
+import { Award, Bookmark, CalendarDays, House, Menu, PlayCircle, Radio, Settings, Trophy } from 'lucide-react';
 
 const items = [
   { label: 'Home', href: '/', icon: House },
@@ -16,12 +16,13 @@ const items = [
 export default function MobileBottomNav() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuActive = ['/leagues', '/highlights', '/settings'].some((route) => pathname.startsWith(route));
+  const menuActive = ['/ballon-dor-2026', '/leagues', '/highlights', '/settings'].some((route) => pathname.startsWith(route));
   return (
     <nav aria-label="Mobile navigation" className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#071018]/95 px-2 pt-2 shadow-[0_-12px_35px_rgba(2,6,23,0.5)] backdrop-blur-xl lg:hidden">
       <div className="relative mx-auto flex max-w-xl items-center justify-around gap-1">
-        <div id="mobile-more-navigation" className={`absolute inset-x-0 bottom-full mb-2 grid grid-cols-3 gap-2 rounded-xl border border-white/10 bg-[#11121a] p-2 shadow-[0_14px_36px_rgba(0,0,0,0.45)] ${menuOpen ? '' : 'hidden'}`}>
+        <div id="mobile-more-navigation" className={`absolute inset-x-0 bottom-full mb-2 grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-[#11121a] p-2 shadow-[0_14px_36px_rgba(0,0,0,0.45)] sm:grid-cols-4 ${menuOpen ? '' : 'hidden'}`}>
             {[
+              { label: 'Ballon d’Or 2026', href: '/ballon-dor-2026', icon: Award },
               { label: 'Leagues', href: '/leagues', icon: Trophy },
               { label: 'Highlights', href: '/highlights', icon: PlayCircle },
               { label: 'Settings', href: '/settings', icon: Settings }

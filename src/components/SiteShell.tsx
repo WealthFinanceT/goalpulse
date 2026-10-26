@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Bookmark, Bell, CalendarDays, House, Moon, PlayCircle, Radio, Settings, Sun, Trophy } from 'lucide-react';
+import { Award, Bookmark, Bell, CalendarDays, House, Moon, PlayCircle, Radio, Settings, Sun, Trophy } from 'lucide-react';
 import MobileBottomNav from './MobileBottomNav';
 import FixtureSearch from './FixtureSearch';
 import type { StreamedMatch } from '@/lib/streamed';
@@ -12,6 +12,7 @@ import type { StreamedMatch } from '@/lib/streamed';
 const navItems = [
   { label: 'Home', href: '/', icon: House },
   { label: 'Live', href: '/live', icon: Radio },
+  { label: 'Ballon d’Or 2026', href: '/ballon-dor-2026', icon: Award },
   { label: 'Upcoming', href: '/upcoming', icon: CalendarDays },
   { label: 'Leagues', href: '/leagues', icon: Trophy },
   { label: 'My Watchlist', href: '/watchlist', icon: Bookmark },

@@ -6,12 +6,13 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/notifications.test.ts tests/stream-player-state.test.ts",
+    "test": "tsx --test tests/notifications.test.ts tests/stream-player-state.test.ts tests/streaming-config.test.ts",
     "lint": "next lint"
   },
   "dependencies": {
     "@upstash/redis": "^1.39.0",
     "@vercel/analytics": "^2.0.1",
+    "dashjs": "^5.2.1",
     "hls.js": "^1.7.3",
     "lucide-react": "^1.34.0",
     "next": "15.5.27",

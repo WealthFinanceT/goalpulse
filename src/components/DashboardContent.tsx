@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, CalendarDays, Play, Radio, Trophy } from 'lucide-react';
+import { ArrowRight, Award, CalendarDays, Play, Radio, Trophy } from 'lucide-react';
 import FilteredMatches from '@/components/FilteredMatches';
 import SiteShell from '@/components/SiteShell';
 import type { StreamedMatch } from '@/lib/streamed';
@@ -91,6 +91,7 @@ export default function DashboardContent({
 
   const quickLinks = [
     { label: 'Live centre', description: 'Follow every match currently in play.', href: '/live', icon: Radio },
+    { label: 'Ballon d’Or 2026', description: 'Open the official ceremony stream.', href: '/ballon-dor-2026', icon: Award },
     { label: 'Fixtures', description: 'See the next scheduled kick-offs.', href: '/upcoming', icon: CalendarDays },
     { label: 'Competitions', description: 'Browse leagues in the match feed.', href: '/leagues', icon: Trophy }
   ];
@@ -150,7 +151,7 @@ export default function DashboardContent({
         </>
       )}
 
-      <section aria-label="Explore Goal Pulse" className="mt-5 grid gap-3 sm:grid-cols-3">
+      <section aria-label="Explore Goal Pulse" className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {quickLinks.map(({ label, description, href, icon: Icon }) => (
           <Link key={href} href={href} className="group flex min-w-0 items-start gap-3 rounded-xl border border-white/8 bg-[#071018]/90 p-4 transition-colors hover:border-emerald-400/25 hover:bg-[#11121a] sm:p-5">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-emerald-400/15 bg-emerald-500/10 text-emerald-300">
