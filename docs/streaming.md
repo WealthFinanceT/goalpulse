@@ -26,7 +26,7 @@ to the deployment environment and restart/redeploy the app as appropriate.
 When no source is configured, or the configuration is invalid, the page shows
 an unavailable/configuration state without fabricating a stream URL.
 
-Streamed.pk's documented streams API returns `embedUrl` values and identifies
-the source stream endpoint. Only use a returned embed URL after confirming the
-specific source and its permitted use. Goal Pulse does not scrape watch pages,
-extract media URLs, or proxy streams.
+The football match feed currently targets Streamed.pk, which has announced that
+it is no longer operating. Live scores, fixtures, and its streams API are
+unavailable; do not substitute an undocumented endpoint or stream source. Goal
+Pulse does not scrape watch pages, extract media URLs, or proxy streams.

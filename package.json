@@ -6,7 +6,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/notifications.test.ts tests/stream-player-state.test.ts tests/streaming-config.test.ts",
+    "test": "tsx --test tests/notifications.test.ts tests/stream-player-state.test.ts tests/streaming-config.test.ts tests/streamed-response.test.ts",
     "lint": "next lint"
   },
   "dependencies": {

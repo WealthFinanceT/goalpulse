@@ -1,11 +1,10 @@
 import type { Metadata, Viewport } from 'next';
 import { Analytics } from '@vercel/analytics/react';
-import PwaInstall from '@/components/PwaInstall';
-import MobileNotificationPrompt from '@/components/MobileNotificationPrompt';
+import ReconstructionPage from '@/components/ReconstructionPage';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Goal Pulse',
+  title: 'Goal Pulse — Under Reconstruction',
   description: 'Football fixtures, live scores and match updates, plus streaming links from Goal Pulse.',
   manifest: '/manifest.webmanifest?v=icons-b7d32ecd308c-70d5dec6971f-3c67a64317a2-c4daed634ebf',
   applicationName: 'Goal Pulse',
@@ -31,9 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        {children}
-        <MobileNotificationPrompt />
-        <PwaInstall />
+        <ReconstructionPage />
         <Analytics />
       </body>
     </html>

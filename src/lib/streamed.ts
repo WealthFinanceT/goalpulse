@@ -101,6 +101,27 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Respon
   }
 }
 
+export async function parseProviderJson(response: Response, source: string): Promise<unknown> {
+  const contentType = response.headers.get('content-type') || '';
+  const body = await response.text();
+
+  if (/we are no longer operating streamed/i.test(body)) {
+    throw new Error('Streamed.pk has shut down; live scores and fixtures are unavailable.');
+  }
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${source}: HTTP ${response.status}.`);
+  }
+  if (!/^application\/(?:[a-z0-9.-]+\+)?json(?:\s*;|$)/i.test(contentType)) {
+    throw new Error(`Invalid response from ${source}: expected JSON but received ${contentType || 'no content type'}.`);
+  }
+
+  try {
+    return JSON.parse(body) as unknown;
+  } catch {
+    throw new Error(`Invalid JSON from ${source}.`);
+  }
+}
+
 function isValidStream(value: unknown): value is StreamedStream {
   if (!value || typeof value !== 'object') return false;
 
@@ -253,16 +274,7 @@ function normalizeMatchesPayload(payload: unknown, liveIds = new Set<string>()):
 
 async function fetchMatches(url: string, init?: RequestInit & { next?: { revalidate: number } }): Promise<StreamedMatch[]> {
   const response = await fetchWithTimeout(url, init);
-  if (!response.ok) throw new Error(`Failed to fetch matches: ${response.status}`);
-
-  const text = await response.text();
-  let data: unknown = [];
-  try {
-    data = JSON.parse(text);
-  } catch (error) {
-    console.warn('Unable to parse streamed matches payload:', error);
-  }
-
+  const data = await parseProviderJson(response, 'Streamed matches');
   return normalizeMatchesPayload(data);
 }
 
@@ -295,8 +307,7 @@ export async function fetchFootballMatches(options: { fresh?: boolean } = {}): P
     MATCHES_URL,
     options.fresh ? { cache: 'no-store' } : { next: { revalidate: FOOTBALL_REVALIDATE_SECONDS } }
   );
-  if (!response.ok) throw new Error(`Failed to fetch matches: ${response.status}`);
-  const payload = await response.json();
+  const payload = await parseProviderJson(response, 'Streamed fixtures');
   // Live badges are valuable but must not hold the whole fixture page hostage when
   // Streamed's live endpoint is slow. The client refreshes that small feed later.
   const liveIds = await liveIdsRequest;
@@ -310,8 +321,7 @@ export async function fetchFootballMatches(options: { fresh?: boolean } = {}): P
 
 export async function fetchLiveMatches(): Promise<StreamedMatch[]> {
   const response = await fetchWithTimeout(LIVE_MATCHES_URL, { next: { revalidate: LIVE_REVALIDATE_SECONDS } });
-  if (!response.ok) throw new Error(`Failed to fetch live matches: ${response.status}`);
-  const payload = await response.json();
+  const payload = await parseProviderJson(response, 'Streamed live matches');
   const liveMatches = normalizeMatchesPayload(payload);
   const liveIds = new Set(liveMatches.map((match) => match.id));
   return normalizeMatchesPayload(payload, liveIds).filter((match) => match.category === 'football');
@@ -331,7 +341,7 @@ export async function fetchMatchById(id: string): Promise<StreamedMatch | null> 
     const response = await fetchWithTimeout(MATCHES_URL, { next: { revalidate: FOOTBALL_REVALIDATE_SECONDS } });
     if (!response.ok) return null;
 
-    const [payload, liveIds] = await Promise.all([response.json(), fetchLiveIds()]);
+    const [payload, liveIds] = await Promise.all([parseProviderJson(response, 'Streamed fixtures'), fetchLiveIds()]);
     const match = normalizeMatchesPayload(payload, liveIds).find((item) => item.id === id) || null;
     if (process.env.NODE_ENV !== 'production' && match) {
       console.debug('[Goal Pulse] fixture', { streamProviderFixtureId: match.id, homeTeam: match.teams?.home?.name, awayTeam: match.teams?.away?.name, kickoffUtc: match.kickoffTime ? new Date(match.kickoffTime).toISOString() : undefined, displayTime: match.kickoffTime ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(match.kickoffTime)) : undefined, status: match.status, currentTime: new Date().toISOString() });
@@ -354,7 +364,7 @@ export async function fetchMatchStreams(match: StreamedMatch): Promise<StreamedS
       const response = await fetchWithTimeout(url, { cache: 'no-store' });
       if (!response.ok) return [];
 
-      const payload: unknown = await response.json();
+      const payload = await parseProviderJson(response, 'Streamed match streams');
       const parsedStreams = Array.isArray(payload) ? payload.filter(isValidStream) : [];
       const availability = await Promise.all(parsedStreams.map(resolveStreamUrl));
       return availability.filter((stream): stream is StreamedStream => stream !== null);

@@ -19,7 +19,12 @@ export function useMatchPolling(initialMatches: StreamedMatch[], enabled = true)
       try {
         const response = await fetch('/api/matches?live=1', { cache: 'no-store' });
         if (!response.ok) return;
-        const liveMatches = (await response.json()) as StreamedMatch[];
+        if (!response.headers.get('content-type')?.toLowerCase().includes('application/json')) return;
+        const payload: unknown = await response.json();
+        if (!Array.isArray(payload)) return;
+        const liveMatches = payload.filter((match): match is StreamedMatch =>
+          Boolean(match && typeof match === 'object' && 'id' in match && typeof match.id === 'string' && 'title' in match && typeof match.title === 'string')
+        );
         const liveById = new Map(liveMatches.map((match) => [match.id, match]));
         setMatches((current) => current.map((match) => liveById.get(match.id) || match));
       } catch {

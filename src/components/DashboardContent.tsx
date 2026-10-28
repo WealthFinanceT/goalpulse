@@ -77,10 +77,19 @@ export default function DashboardContent({
     try {
       const response = await fetch(`/api/matches?offset=${matches.length}&limit=9`);
       if (!response.ok) throw new Error('Unable to load more fixtures. Please try again.');
-      const page = await response.json() as { matches: StreamedMatch[] };
+      if (!response.headers.get('content-type')?.toLowerCase().includes('application/json')) {
+        throw new Error('The match service returned an unexpected response. Please try again.');
+      }
+      const payload: unknown = await response.json();
+      if (!payload || typeof payload !== 'object' || !('matches' in payload) || !Array.isArray(payload.matches)) {
+        throw new Error('The match service returned invalid fixture data. Please try again.');
+      }
+      const newMatches = payload.matches.filter((match): match is StreamedMatch =>
+        Boolean(match && typeof match === 'object' && 'id' in match && typeof match.id === 'string' && 'title' in match && typeof match.title === 'string')
+      );
       setMatches((current) => {
         const ids = new Set(current.map((match) => match.id));
-        return [...current, ...page.matches.filter((match) => !ids.has(match.id))];
+        return [...current, ...newMatches.filter((match) => !ids.has(match.id))];
       });
     } catch (error) {
       setLoadMoreError(error instanceof Error ? error.message : 'Unable to load more fixtures. Please try again.');
